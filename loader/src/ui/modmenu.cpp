@@ -239,7 +239,7 @@ static void showModLibraryPopup() {
 
 // ─── MenuLayer::init hook ──────────────────────────────────────────────────
 
-static bool __fastcall menuLayerInitDetour(void* self);
+static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void* a4);
 
 // Known GeometryDash.exe builds, identified by the PE header TimeDateStamp (the
 // same way Geode identifies Windows builds), with the RVA of MenuLayer::init.
@@ -324,7 +324,7 @@ static bool verifyMenuLayerInit(HMODULE mod, uintptr_t rva) {
     return true;
 }
 
-using MenuLayerInitFn = bool(__thiscall*)(void* self);
+using MenuLayerInitFn = bool(__thiscall*)(void* self, void* a2, void* a3, void* a4);
 static MenuLayerInitFn g_originalMenuLayerInit = nullptr;
 
 static void onTitaniumButtonClicked(void*, void*) {
@@ -332,7 +332,9 @@ static void onTitaniumButtonClicked(void*, void*) {
     showModLibraryPopup();
 }
 
-static bool __fastcall menuLayerInitDetour(void* self) {
+// Forwards all four argument registers untouched so the hook is transparent even
+// if the real function takes more than `self`.
+static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void* a4) {
     // installHook() returns the trampoline only after the detour is live, so in
     // the tiny window between the two the pointer is still null. Wait briefly
     // instead of failing MenuLayer::init (which would leave the game stuck).
@@ -344,7 +346,7 @@ static bool __fastcall menuLayerInitDetour(void* self) {
     }
 
     logMsg("[TitaniumUI] MenuLayer::init detour entered, calling original");
-    bool ok = g_originalMenuLayerInit(self);
+    bool ok = g_originalMenuLayerInit(self, a2, a3, a4);
     logMsg("[TitaniumUI] original MenuLayer::init returned %d", ok ? 1 : 0);
     if (!ok) return false;
 
