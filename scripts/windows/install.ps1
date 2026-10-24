@@ -31,6 +31,20 @@ if (-not $gpp) {
 }
 Write-Host "[Titanium] Compiler: $gpp"
 
+# Check the compiler up front so a wrong one gives a clear message instead of a
+# wall of errors later.
+$gppTarget = [string](& $gpp -dumpmachine | Select-Object -First 1)
+$gppVersion = [string](& $gpp -dumpversion | Select-Object -First 1)
+Write-Host "[Titanium] Compiler target: $gppTarget, version: $gppVersion"
+if ($gppTarget -notmatch '^x86_64') {
+    throw "Error: this compiler builds for '$gppTarget', but Titanium needs a 64-bit MinGW-w64 compiler (x86_64-w64-mingw32). In MSYS2 install it with: pacman -S mingw-w64-x86_64-gcc"
+}
+$gppMajor = 0
+if ($gppVersion -match '^(\d+)') { $gppMajor = [int]$Matches[1] }
+if ($gppMajor -lt 13) {
+    Write-Warning "GCC $gppVersion found; GCC 13 or newer is recommended. If compilation fails, update MinGW-w64 (MSYS2: pacman -Syu)."
+}
+
 # Back up the original pthreadVCE3.dll (only once).
 $origPath = Join-Path $gd $OrigDll
 $bakPath = Join-Path $gd $OrigBak
@@ -73,9 +87,20 @@ try {
         'build-windows/titaniumproxy.def',
         '-Wl,--enable-stdcall-fixup'
     )
-    & $gpp @compileArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "Error: compilation failed (exit code $LASTEXITCODE)."
+    # Show the compiler output and also keep it in a log file. stderr is merged
+    # into the pipeline, so error handling is relaxed for this one call.
+    $logPath = Join-Path $buildDir 'compile.log'
+    $savedPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $gpp @compileArgs 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $logPath | Write-Host
+        $compileExit = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $savedPreference
+    }
+    if ($compileExit -ne 0) {
+        throw "Error: compilation failed (exit code $compileExit). The compiler messages are shown above and saved in:`n  $logPath"
     }
 }
 finally {

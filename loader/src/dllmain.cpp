@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <cstdio>
+#include <cstring>
 
 extern bool titaniumInit();
 extern void titaniumShutdown();
