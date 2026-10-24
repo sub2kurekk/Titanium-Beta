@@ -2,7 +2,7 @@
 #include <string_view>
 #include <cstdint>
 
-namespace prism {
+namespace titanium {
 
 struct ModInfo {
     std::string_view id;
@@ -25,10 +25,10 @@ public:
     Mod& operator=(const Mod&) = delete;
 };
 
-} // namespace prism
+} // namespace titanium
 
-#define PRISM_MOD(modClass) \
+#define TITANIUM_MOD(modClass) \
     extern "C" { \
-        prism::Mod* prismModInit() { return new modClass(); } \
-        void prismModExit(prism::Mod* mod) { delete mod; } \
+        titanium::Mod* titaniumModInit() { return new modClass(); } \
+        void titaniumModExit(titanium::Mod* mod) { delete mod; } \
     }

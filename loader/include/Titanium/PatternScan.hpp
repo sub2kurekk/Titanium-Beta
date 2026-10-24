@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-namespace prism {
+namespace titanium {
 
 struct MemoryRegion {
     uintptr_t start;
@@ -46,4 +46,4 @@ private:
     bool isIdSym(const char* name);
 };
 
-} // namespace prism
+} // namespace titanium

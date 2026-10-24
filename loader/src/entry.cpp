@@ -1,45 +1,45 @@
-#include <Prism/Loader.hpp>
-#include <Prism/Log.hpp>
+#include <Titanium/Loader.hpp>
+#include <Titanium/Log.hpp>
 #include <cstdio>
 #include <dlfcn.h>
 #include <unistd.h>
 
-static bool g_prismInitialized = false;
+static bool g_titaniumInitialized = false;
 
-__attribute__((constructor(101))) void prismEntry() {
-    auto* env = getenv("PRISM_LOADER");
+__attribute__((constructor(101))) void titaniumEntry() {
+    auto* env = getenv("TITANIUM_LOADER");
     if (!env || env[0] != '1') {
         return;
     }
 
-    FILE* log = fopen("/tmp/prismloader.log", "w");
+    FILE* log = fopen("/tmp/titaniumloader.log", "w");
     if (log) {
-        fprintf(log, "[Prism] Loader v0.1.0\n");
-        fprintf(log, "[Prism] PID: %d\n", getpid());
-        fprintf(log, "[Prism] LD_PRELOAD detected, initializing...\n");
+        fprintf(log, "[Titanium] Loader v0.1.0\n");
+        fprintf(log, "[Titanium] PID: %d\n", getpid());
+        fprintf(log, "[Titanium] LD_PRELOAD detected, initializing...\n");
         fclose(log);
     }
 
-    if (!prism::Loader::get().init()) {
+    if (!titanium::Loader::get().init()) {
         if (log) {
-            log = fopen("/tmp/prismloader.log", "a");
-            fprintf(log, "[Prism] FAILED to initialize loader!\n");
+            log = fopen("/tmp/titaniumloader.log", "a");
+            fprintf(log, "[Titanium] FAILED to initialize loader!\n");
             fclose(log);
         }
         return;
     }
 
-    g_prismInitialized = true;
+    g_titaniumInitialized = true;
 
-    log = fopen("/tmp/prismloader.log", "a");
+    log = fopen("/tmp/titaniumloader.log", "a");
     if (log) {
-        fprintf(log, "[Prism] Loader initialized successfully\n");
+        fprintf(log, "[Titanium] Loader initialized successfully\n");
         fclose(log);
     }
 }
 
-__attribute__((destructor)) void prismExit() {
-    if (g_prismInitialized) {
-        prism::Loader::get().unloadMods();
+__attribute__((destructor)) void titaniumExit() {
+    if (g_titaniumInitialized) {
+        titanium::Loader::get().unloadMods();
     }
 }

@@ -1,8 +1,8 @@
 #include <windows.h>
 #include <cstdio>
 
-extern bool prismInit();
-extern void prismShutdown();
+extern bool titaniumInit();
+extern void titaniumShutdown();
 
 static HMODULE g_originalPthread = nullptr;
 static bool g_initialized = false;
@@ -16,9 +16,9 @@ static const char* getLogPath() {
         if (len == 0)
             len = GetEnvironmentVariableA("TMP", tmp, MAX_PATH);
         if (len > 0) {
-            snprintf(path, MAX_PATH, "%s\\prismloader.log", tmp);
+            snprintf(path, MAX_PATH, "%s\\titaniumloader.log", tmp);
         } else {
-            strcpy(path, "C:\\prismloader.log");
+            strcpy(path, "C:\\titaniumloader.log");
         }
         resolved = true;
     }
@@ -37,18 +37,18 @@ static void logMsg(const char* msg) {
     }
 }
 
-static DWORD WINAPI prismInitThread(LPVOID) {
+static DWORD WINAPI titaniumInitThread(LPVOID) {
     Sleep(500);
 
-    logMsg("[Prism] Proxy DLL loaded, initializing...");
+    logMsg("[Titanium] Proxy DLL loaded, initializing...");
 
-    if (!prismInit()) {
-        logMsg("[Prism] prismInit() FAILED");
+    if (!titaniumInit()) {
+        logMsg("[Titanium] titaniumInit() FAILED");
         return 1;
     }
 
     g_initialized = true;
-    logMsg("[Prism] prismInit() OK");
+    logMsg("[Titanium] titaniumInit() OK");
     return 0;
 }
 
@@ -74,16 +74,16 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID) {
 
         if (!g_originalPthread) {
             char buf[512];
-            snprintf(buf, sizeof(buf), "[Prism] Warning: Could not load pthreadVCE3_o.dll (error %lu), continuing anyway", GetLastError());
+            snprintf(buf, sizeof(buf), "[Titanium] Warning: Could not load pthreadVCE3_o.dll (error %lu), continuing anyway", GetLastError());
             logMsg(buf);
         }
 
-        HANDLE hThread = CreateThread(nullptr, 0, prismInitThread, nullptr, 0, nullptr);
+        HANDLE hThread = CreateThread(nullptr, 0, titaniumInitThread, nullptr, 0, nullptr);
         if (hThread) CloseHandle(hThread);
     }
     else if (reason == DLL_PROCESS_DETACH) {
         if (g_initialized)
-            prismShutdown();
+            titaniumShutdown();
         if (g_originalPthread)
             FreeLibrary(g_originalPthread);
     }

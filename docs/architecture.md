@@ -1,6 +1,6 @@
 # Architecture
 
-PrismLoader consists of several cooperating layers. The full flow from GD
+TitaniumLoader consists of several cooperating layers. The full flow from GD
 launch to running mods:
 
 ```
@@ -12,7 +12,7 @@ loads pthreadVCE3.dll  ←  our proxy (dllmain.cpp)
   │  • forwards exports (.def)
   │  • spawns a thread, 500ms sleep
   ▼
-prismInit()  (loader.cpp)
+titaniumInit()  (loader.cpp)
   │  • PatternScanner::load() — find GD/cocos2d in memory
   ▼
 detectGdInit()  (gdinit.cpp)
@@ -34,16 +34,16 @@ original. `DllMain`:
 2. Forwards all pthread exports to the original via `.def` (generated from the
    original's `objdump` output by `scripts/gendef.sh`).
 3. Spawns a separate thread that waits **500ms** (let GD finish init) and only
-   then calls `prismInit()`.
+   then calls `titaniumInit()`.
 
 The proxy additionally exports 4 loader symbols for mods:
-`prism_hook`, `prism_unhook`, `prism_resolve_address`, `prism_log`.
+`titanium_hook`, `titanium_unhook`, `titanium_resolve_address`, `titanium_log`.
 
 ## Pattern Scan (`loader/src/patternscan.cpp`)
 
 Scans the process memory for the GD base and cocos2d (`libcocos2d.dll`).
 `PatternScanner::load()` returns the base address from which the hook engine
-and mod loader compute offsets. Log line: `[Prism] GD base: ...`.
+and mod loader compute offsets. Log line: `[Titanium] GD base: ...`.
 
 ## Hook Engine (`loader/src/hookengine.cpp`)
 
@@ -55,24 +55,24 @@ Inline memory detours:
   calling the original still works
 - `HookHandle { detour, trampoline, target }` — identifier for unhooking
 
-API exposed to mods: `prism::hook()`, `prism::unhook()`,
-`prism::resolveAddress()` (delegated through the proxy exports).
+API exposed to mods: `titanium::hook()`, `titanium::unhook()`,
+`titanium::resolveAddress()` (delegated through the proxy exports).
 
 ## Mod Loader (`loader/src/modloader.cpp`)
 
 `ModLoader::discoverMods()`:
 
-- **Flat** scan of `%USERPROFILE%/.prismloader/mods/*.dll` (subdirs ignored!)
+- **Flat** scan of `%USERPROFILE%/.titaniumloader/mods/*.dll` (subdirs ignored!)
 - `LoadLibraryA` on each DLL
-- `GetProcAddress("prismModInit")` → constructs a `prism::Mod` instance
+- `GetProcAddress("titaniumModInit")` → constructs a `titanium::Mod` instance
 - Parses `mod.json` (minimal JSON, no dependencies)
 - Calls `entry.instance->onLoad()` — **required** in the mod lifecycle
 
-Success log: `[Prism] Loaded mod: <id>`.
+Success log: `[Titanium] Loaded mod: <id>`.
 
 ## Initialization (`loader/src/loader.cpp`)
 
-`prismInit()`:
+`titaniumInit()`:
 
 1. `PatternScanner::load()`
 2. `detectGdInit()` → hook `CCEGLView::swapBuffers` (waits for the first frame)
@@ -93,16 +93,16 @@ menuItem/label/layer, `addChild`/Z, `setPosition`/`Scale`/`ZOrder`/`Visible`,
 `removeFromParent`, `getRunningScene`) are resolved dynamically via
 `GetProcAddress` from `libcocos2d.dll`.
 
-## SDK (`sdk/include/Prism/`)
+## SDK (`sdk/include/Titanium/`)
 
 The public API for modders (header-only from a mod's perspective):
 
 | File | Contents |
 | --- | --- |
-| `Mod.hpp` | `prism::Mod` base class, `PRISM_MOD()` macro |
-| `Hook.hpp` | `prism::hook()`/`unhook()`, `PRISM_HOOK()` macro |
-| `Log.hpp` | `prism::log()`, `PRISM_LOG`/`PRISM_MOD_LOG` macros |
-| `Event.hpp` | `prism::Event<Args...>` template |
+| `Mod.hpp` | `titanium::Mod` base class, `TITANIUM_MOD()` macro |
+| `Hook.hpp` | `titanium::hook()`/`unhook()`, `TITANIUM_HOOK()` macro |
+| `Log.hpp` | `titanium::log()`, `TITANIUM_LOG`/`TITANIUM_MOD_LOG` macros |
+| `Event.hpp` | `titanium::Event<Args...>` template |
 | `Version.hpp` | loader version, `Version` struct |
 
 Mods talk to the loader through the proxy exports (`getLoaderProc`); they do not
@@ -111,12 +111,12 @@ link statically against the loader.
 ## Directory structure
 
 ```
-PrismLoader/
-├── loader/              # libprismloader.so (Linux) + prismproxy.dll (Proton)
+TitaniumLoader/
+├── loader/              # libtitaniumloader.so (Linux) + titaniumproxy.dll (Proton)
 │   ├── src/             # dllmain, hookengine, patternscan, modloader, gdinit, log
 │   │   └── ui/          # modmenu (Mod Library button)
-│   └── include/Prism/   # Loader.hpp, HookEngine.hpp, PatternScan.hpp, ModLoader.hpp
-├── sdk/include/Prism/   # Public API: Mod, Hook, Log, Event, Version
+│   └── include/Titanium/   # Loader.hpp, HookEngine.hpp, PatternScan.hpp, ModLoader.hpp
+├── sdk/include/Titanium/   # Public API: Mod, Hook, Log, Event, Version
 ├── mods/example/        # Example mod (flat layout)
 ├── scripts/             # install-proton.sh, gendef.sh, setup.sh
 ├── cmake/               # mingw-w64-x86_64.cmake toolchain

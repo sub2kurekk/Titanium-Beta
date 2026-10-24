@@ -1,8 +1,8 @@
-#include <Prism/Loader.hpp>
-#include <Prism/ModLoader.hpp>
-#include <Prism/HookEngine.hpp>
-#include <Prism/PatternScan.hpp>
-#include <Prism/ModMenu.hpp>
+#include <Titanium/Loader.hpp>
+#include <Titanium/ModLoader.hpp>
+#include <Titanium/HookEngine.hpp>
+#include <Titanium/PatternScan.hpp>
+#include <Titanium/ModMenu.hpp>
 #include <Log.hpp>
 
 #ifdef _WIN32
@@ -17,7 +17,7 @@
 #include <string>
 #endif
 
-namespace prism {
+namespace titanium {
 
 #ifdef _WIN32
 extern bool detectGdInit();
@@ -38,21 +38,21 @@ bool Loader::init() {
     DWORD len = GetEnvironmentVariableA("USERPROFILE", profile, MAX_PATH);
     if (len == 0)
         GetEnvironmentVariableA("HOME", profile, MAX_PATH);
-    modsDir = std::string(profile) + "\\.prismloader\\mods";
+    modsDir = std::string(profile) + "\\.titaniumloader\\mods";
     CreateDirectoryA(modsDir.c_str(), nullptr);
 #else
     const char* profile = getenv("HOME");
     if (!profile) profile = "/tmp";
-    modsDir = std::string(profile) + "/.prismloader/mods";
+    modsDir = std::string(profile) + "/.titaniumloader/mods";
 
-    // Best-effort mkdir -p for ~/.prismloader/mods.
-    std::string prismDir = std::string(profile) + "/.prismloader";
-    mkdir(prismDir.c_str(), 0755);
+    // Best-effort mkdir -p for ~/.titaniumloader/mods.
+    std::string titaniumDir = std::string(profile) + "/.titaniumloader";
+    mkdir(titaniumDir.c_str(), 0755);
     mkdir(modsDir.c_str(), 0755);
 #endif
 
     if (!PatternScanner::get().load()) {
-        logMsg("[Prism] PatternScanner failed");
+        logMsg("[Titanium] PatternScanner failed");
         return false;
     }
 
@@ -61,7 +61,7 @@ bool Loader::init() {
     installModMenuHook();
 #endif
 
-    logMsg("[Prism] Loader ready. Mods dir: %s", modsDir.c_str());
+    logMsg("[Titanium] Loader ready. Mods dir: %s", modsDir.c_str());
 
     return true;
 }
@@ -72,7 +72,7 @@ void Loader::loadMods() {
         ModLoader::get().loadMod(path);
     }
 
-    logMsg("[Prism] Loaded %zu mod(s)", found.size());
+    logMsg("[Titanium] Loaded %zu mod(s)", found.size());
 }
 
 void Loader::unloadMods() {
@@ -83,17 +83,17 @@ void Loader::unloadMods() {
     }
 }
 
-PrismApi Loader::getApi() const {
-    PrismApi api{};
+TitaniumApi Loader::getApi() const {
+    TitaniumApi api{};
     return api;
 }
 
-} // namespace prism
+} // namespace titanium
 
-bool prismInit() {
-    return prism::Loader::get().init();
+bool titaniumInit() {
+    return titanium::Loader::get().init();
 }
 
-void prismShutdown() {
-    prism::Loader::get().unloadMods();
+void titaniumShutdown() {
+    titanium::Loader::get().unloadMods();
 }

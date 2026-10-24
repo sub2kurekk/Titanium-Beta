@@ -1,4 +1,4 @@
-#include <Prism/HookEngine.hpp>
+#include <Titanium/HookEngine.hpp>
 #include <Log.hpp>
 #include <cstring>
 
@@ -10,7 +10,7 @@
 #include <cstring>
 #endif
 
-namespace prism {
+namespace titanium {
 
 HookEngine& HookEngine::get() {
     static HookEngine instance;
@@ -49,7 +49,7 @@ bool HookEngine::installHook(void* target, void* detour, Hook* out) {
     std::lock_guard lock(mutex);
 
     if (hooks.count(target)) {
-        logMsg("[Prism] Hook already exists at %p", target);
+        logMsg("[Titanium] Hook already exists at %p", target);
         return false;
     }
 
@@ -63,7 +63,7 @@ bool HookEngine::installHook(void* target, void* detour, Hook* out) {
 
     hook.trampoline = createTrampoline(target, 14);
     if (!hook.trampoline) {
-        logMsg("[Prism] Failed to create trampoline for %p", target);
+        logMsg("[Titanium] Failed to create trampoline for %p", target);
         return false;
     }
 
@@ -148,7 +148,7 @@ bool HookEngine::applyDetour(Hook& hook) {
 #endif
 
     if (!setMemoryProtection(hook.target, 14, protRW)) {
-        logMsg("[Prism] setMemoryProtection(RW) failed");
+        logMsg("[Titanium] setMemoryProtection(RW) failed");
         return false;
     }
 
@@ -193,17 +193,17 @@ bool HookEngine::restoreOriginal(Hook& hook) {
     return true;
 }
 
-} // namespace prism
+} // namespace titanium
 
-#include <Prism/Hook.hpp>
-#include <Prism/PatternScan.hpp>
+#include <Titanium/Hook.hpp>
+#include <Titanium/PatternScan.hpp>
 
 extern "C" {
 
 __attribute__((visibility("default")))
-bool prism_hook(void* target, void* detour, prism::HookHandle* out) {
-    prism::Hook hook;
-    bool success = prism::HookEngine::get().installHook(target, detour, &hook);
+bool titanium_hook(void* target, void* detour, titanium::HookHandle* out) {
+    titanium::Hook hook;
+    bool success = titanium::HookEngine::get().installHook(target, detour, &hook);
     if (success && out) {
         out->target = hook.target;
         out->detour = hook.detour;
@@ -213,14 +213,14 @@ bool prism_hook(void* target, void* detour, prism::HookHandle* out) {
 }
 
 __attribute__((visibility("default")))
-bool prism_unhook(prism::HookHandle* handle) {
+bool titanium_unhook(titanium::HookHandle* handle) {
     if (!handle) return false;
-    return prism::HookEngine::get().removeHook(handle->target);
+    return titanium::HookEngine::get().removeHook(handle->target);
 }
 
 __attribute__((visibility("default")))
-void* prism_resolve_address(const char* symbol) {
-    auto addr = prism::PatternScanner::get().resolveSymbol(symbol);
+void* titanium_resolve_address(const char* symbol) {
+    auto addr = titanium::PatternScanner::get().resolveSymbol(symbol);
     return addr ? reinterpret_cast<void*>(*addr) : nullptr;
 }
 

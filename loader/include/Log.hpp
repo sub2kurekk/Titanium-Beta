@@ -1,5 +1,5 @@
 #pragma once
 
-namespace prism {
+namespace titanium {
 void logMsg(const char* fmt, ...);
 }

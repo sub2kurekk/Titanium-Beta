@@ -4,7 +4,7 @@
 #include <vector>
 #include <mutex>
 
-namespace prism {
+namespace titanium {
 
 struct Hook {
     void* target;
@@ -35,4 +35,4 @@ private:
     std::mutex mutex;
 };
 
-} // namespace prism
+} // namespace titanium

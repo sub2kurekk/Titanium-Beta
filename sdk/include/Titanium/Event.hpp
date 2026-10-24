@@ -3,7 +3,7 @@
 #include <functional>
 #include <algorithm>
 
-namespace prism {
+namespace titanium {
 
 template <typename... Args>
 class Event {
@@ -29,4 +29,4 @@ private:
     std::vector<Callback> callbacks;
 };
 
-} // namespace prism
+} // namespace titanium

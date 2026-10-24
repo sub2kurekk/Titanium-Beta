@@ -8,7 +8,7 @@
 #include <cstdlib>
 #endif
 
-namespace prism {
+namespace titanium {
 
 static const char* getLogPath() {
     static char path[1024];
@@ -20,15 +20,15 @@ static const char* getLogPath() {
         if (len == 0)
             len = GetEnvironmentVariableA("TMP", tmp, MAX_PATH);
         if (len > 0) {
-            snprintf(path, sizeof(path), "%s\\prismloader.log", tmp);
+            snprintf(path, sizeof(path), "%s\\titaniumloader.log", tmp);
         } else {
-            strcpy(path, "C:\\prismloader.log");
+            strcpy(path, "C:\\titaniumloader.log");
         }
 #else
         const char* tmp = getenv("TMPDIR");
         if (!tmp || !*tmp) tmp = getenv("TEMP");
         if (!tmp || !*tmp) tmp = "/tmp";
-        snprintf(path, sizeof(path), "%s/prismloader.log", tmp);
+        snprintf(path, sizeof(path), "%s/titaniumloader.log", tmp);
 #endif
         resolved = true;
     }
@@ -62,9 +62,9 @@ void logMsg(const char* fmt, ...) {
 #endif
 }
 
-} // namespace prism
+} // namespace titanium
 
-#include <Prism/Log.hpp>
+#include <Titanium/Log.hpp>
 
 extern "C" {
 
@@ -72,8 +72,8 @@ extern "C" {
 __declspec(dllexport)
 #endif
 __attribute__((visibility("default")))
-void prism_log(int level, const char* mod, const char* msg) {
-    prism::logMsg("[Prism][%s][%s] %s", prism::logLevelName(static_cast<prism::LogLevel>(level)), mod, msg);
+void titanium_log(int level, const char* mod, const char* msg) {
+    titanium::logMsg("[Titanium][%s][%s] %s", titanium::logLevelName(static_cast<titanium::LogLevel>(level)), mod, msg);
 }
 
 }

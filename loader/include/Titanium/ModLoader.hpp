@@ -4,9 +4,9 @@
 #include <vector>
 #include <memory>
 #include <functional>
-#include <Prism/Mod.hpp>
+#include <Titanium/Mod.hpp>
 
-namespace prism {
+namespace titanium {
 
 class ModLoader {
 public:
@@ -39,4 +39,4 @@ private:
     bool parseMetadata(const std::string& path, std::string& id);
 };
 
-} // namespace prism
+} // namespace titanium

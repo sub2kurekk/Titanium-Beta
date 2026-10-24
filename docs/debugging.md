@@ -2,37 +2,37 @@
 
 ## Where logs live
 
-The loader logs to `prismloader.log` in `%TEMP%` inside the Proton prefix.
+The loader logs to `titaniumloader.log` in `%TEMP%` inside the Proton prefix.
 On Linux that prefix is:
 
 ```
-~/.steam/steam/steamapps/compatdata/322170/pfx/drive_c/users/steamuser/AppData/Local/Temp/prismloader.log
+~/.steam/steam/steamapps/compatdata/322170/pfx/drive_c/users/steamuser/AppData/Local/Temp/titaniumloader.log
 ```
 
 Find the file regardless of the exact Steam path:
 
 ```bash
-find ~/.steam/steam/steamapps/compatdata/322170 -name prismloader.log
+find ~/.steam/steam/steamapps/compatdata/322170 -name titaniumloader.log
 ```
 
 Follow it live:
 
 ```bash
-tail -f ~/.local/share/Steam/steamapps/compatdata/322170/pfx/drive_c/users/steamuser/AppData/Local/Temp/prismloader.log
+tail -f ~/.local/share/Steam/steamapps/compatdata/322170/pfx/drive_c/users/steamuser/AppData/Local/Temp/titaniumloader.log
 ```
 
-(Linux native build: logs at `/tmp/prismloader.log`.)
+(Linux native build: logs at `/tmp/titaniumloader.log`.)
 
 ## Key lines to look for
 
 | Log line | Meaning |
 | --- | --- |
-| `[Prism] GD base: ...` | Pattern scan loaded the GD base |
-| `[Prism] MenuLayer::init hook installed at ...` | Hook active |
-| `[PrismUI] Mod Library button injected at ...` | The "Mods" button works |
-| `[Prism] Loaded mod: <id>` | Mod loaded + `onLoad` fired |
+| `[Titanium] GD base: ...` | Pattern scan loaded the GD base |
+| `[Titanium] MenuLayer::init hook installed at ...` | Hook active |
+| `[TitaniumUI] Mod Library button injected at ...` | The "Mods" button works |
+| `[Titanium] Loaded mod: <id>` | Mod loaded + `onLoad` fired |
 
-No `[Prism] GD base:` → the pattern scan did not find cocos2d (likely a wrong GD
+No `[Titanium] GD base:` → the pattern scan did not find cocos2d (likely a wrong GD
 version, or libcocos2d was not loaded at scan time).
 
 ## Common problems
@@ -48,22 +48,22 @@ missing from the Proton prefix. **Fix:** build the mod with
 
 - The mod is in a **subdirectory** — `discoverMods()` scans flat, subdirs are
   ignored. Everything (`*.dll` + `mod.json`) must sit directly in
-  `.prismloader/mods/`.
-- Missing `prismModInit` export — check `PRISM_MOD()` in the source and verify
+  `.titaniumloader/mods/`.
+- Missing `titaniumModInit` export — check `TITANIUM_MOD()` in the source and verify
   the DLL actually exports the symbol (`x86_64-w64-mingw32-objdump -p mod.dll`).
 
 ### GD crashes before MenuLayer::init
 
 Known issue: `CAPIJobRequestUserStats - Server response failed 2`. This is a
 Steam API / Proton runtime crash, **not** our bug — it occurs independently of
-PrismLoader. Effect: the "Mods" button has not yet been visually confirmed
+TitaniumLoader. Effect: the "Mods" button has not yet been visually confirmed
 in-game, because GD crashes first.
 
 ### Hook does not work / crash on hook
 
-- Check that `resolveAddress()` returned an address (log `[Prism] GD base:`).
+- Check that `resolveAddress()` returned an address (log `[Titanium] GD base:`).
 - Make sure you pass the **address**, not a dereference:
-  `prism::hook((void*)addr, ...)` ✓, `prism::hook((void*)*addr, ...)` ✗.
+  `titanium::hook((void*)addr, ...)` ✓, `titanium::hook((void*)*addr, ...)` ✗.
 - Offsets are specific to the GD version. `MenuLayer::init` = `0x333a90` for
   **GD 2.206 x64**. A different version → a different offset.
 

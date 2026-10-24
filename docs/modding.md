@@ -1,55 +1,55 @@
 # Writing Mods
 
-A PrismLoader mod is a shared library (`.dll`) with one required exported
-function (`prismModInit`) and an accompanying `mod.json`. The SDK is header-only
-(`sdk/include/Prism/`) — a mod does not link statically against the loader; it
+A TitaniumLoader mod is a shared library (`.dll`) with one required exported
+function (`titaniumModInit`) and an accompanying `mod.json`. The SDK is header-only
+(`sdk/include/Titanium/`) — a mod does not link statically against the loader; it
 talks to it through the proxy exports at runtime.
 
 ## Minimal mod
 
 ```cpp
-#include <Prism/Mod.hpp>
-#include <Prism/Log.hpp>
+#include <Titanium/Mod.hpp>
+#include <Titanium/Log.hpp>
 
-class ExampleMod : public prism::Mod {
+class ExampleMod : public titanium::Mod {
 public:
-    prism::ModInfo getInfo() const override {
+    titanium::ModInfo getInfo() const override {
         return {
             .id          = "example",
             .name        = "Example Mod",
             .version     = "1.0.0",
-            .author      = "PrismLoader",
-            .description = "An example mod for PrismLoader",
+            .author      = "TitaniumLoader",
+            .description = "An example mod for TitaniumLoader",
         };
     }
 
     void onLoad() override {
-        PRISM_MOD_LOG(Info, "Example mod loaded!");
+        TITANIUM_MOD_LOG(Info, "Example mod loaded!");
     }
 
     void onUnload() override {
-        PRISM_MOD_LOG(Info, "Example mod unloaded!");
+        TITANIUM_MOD_LOG(Info, "Example mod unloaded!");
     }
 };
 
-PRISM_MOD(ExampleMod)
+TITANIUM_MOD(ExampleMod)
 ```
 
 Full working example: [`mods/example/src/main.cpp`](../mods/example/src/main.cpp).
 
 ## Mod lifecycle
 
-The `PRISM_MOD(modClass)` macro ([`Mod.hpp`](../sdk/include/Prism/Mod.hpp))
+The `TITANIUM_MOD(modClass)` macro ([`Mod.hpp`](../sdk/include/Titanium/Mod.hpp))
 exports:
 
 ```cpp
 extern "C" {
-    prism::Mod* prismModInit();       // new modClass()
-    void prismModExit(prism::Mod*);   // delete mod
+    titanium::Mod* titaniumModInit();       // new modClass()
+    void titaniumModExit(titanium::Mod*);   // delete mod
 }
 ```
 
-The loader calls `prismModInit()` on load, then **requires** `onLoad()`.
+The loader calls `titaniumModInit()` on load, then **requires** `onLoad()`.
 `onUnload()` is called on removal. `getInfo()` is mandatory (pure virtual) — it
 returns a `ModInfo` (id/name/version/author/description, all `string_view`).
 
@@ -62,8 +62,8 @@ Mod metadata, parsed by the loader (minimal JSON, no external libraries):
     "id": "example",
     "name": "Example Mod",
     "version": "1.0.0",
-    "author": "PrismLoader",
-    "description": "An example mod for PrismLoader",
+    "author": "TitaniumLoader",
+    "description": "An example mod for TitaniumLoader",
     "loaderVersion": ">=0.1.0"
 }
 ```
@@ -75,7 +75,7 @@ The file **must** sit next to the `.dll` in the same (flat) directory.
 Mods are NOT in subdirectories. Everything in one folder:
 
 ```
-<proton-pfx>/drive_c/users/steamuser/.prismloader/mods/
+<proton-pfx>/drive_c/users/steamuser/.titaniumloader/mods/
 ├── example_mod.dll
 └── mod.json
 ```
@@ -107,27 +107,27 @@ prefix → `LoadLibraryA` returns error 126 and the mod fails to load.
 
 ## Hooking
 
-The SDK offers two API levels ([`Hook.hpp`](../sdk/include/Prism/Hook.hpp)):
+The SDK offers two API levels ([`Hook.hpp`](../sdk/include/Titanium/Hook.hpp)):
 
-### Low level: `prism::hook()`
+### Low level: `titanium::hook()`
 
 ```cpp
-prism::HookHandle h;
-prism::hook((void*)targetAddr, (void*)myDetour, &h);
+titanium::HookHandle h;
+titanium::hook((void*)targetAddr, (void*)myDetour, &h);
 // h.trampoline -> pointer to the original
 // ...
-prism::unhook(&h);
+titanium::unhook(&h);
 ```
 
-Addresses are resolved via `prism::resolveAddress("SymbolName")`.
+Addresses are resolved via `titanium::resolveAddress("SymbolName")`.
 
-### `PRISM_HOOK` macro
+### `TITANIUM_HOOK` macro
 
 Automatic detour with trampoline, registered in a
 `__attribute__((constructor))`:
 
 ```cpp
-PRISM_HOOK(void, MenuLayer_init, /* args */) {
+TITANIUM_HOOK(void, MenuLayer_init, /* args */) {
     // your code before/after
     // call the original through `MenuLayer_init` (the trampoline)
     return MenuLayer_init(/* args */);
@@ -137,30 +137,30 @@ PRISM_HOOK(void, MenuLayer_init, /* args */) {
 The macro generates: a detour function, a pointer typedef, a trampoline
 variable, and a constructor that calls `resolveAddress(#name)` + `hook`.
 
-> **Important (known bug pattern):** pass the **address** to `prism::hook()`,
-> do not dereference it. `prism::hook((void*)addr, ...)` is correct;
-> `prism::hook((void*)*addr, ...)` is a bug.
+> **Important (known bug pattern):** pass the **address** to `titanium::hook()`,
+> do not dereference it. `titanium::hook((void*)addr, ...)` is correct;
+> `titanium::hook((void*)*addr, ...)` is a bug.
 
 ## Logging
 
-[`Log.hpp`](../sdk/include/Prism/Log.hpp)) — logs go to the loader's log file
-(`prismloader.log` in the Proton prefix `%TEMP%`):
+[`Log.hpp`](../sdk/include/Titanium/Log.hpp)) — logs go to the loader's log file
+(`titaniumloader.log` in the Proton prefix `%TEMP%`):
 
 ```cpp
-PRISM_LOG(Info, "global message");
-PRISM_MOD_LOG(Info, "message tagged with the mod id");
+TITANIUM_LOG(Info, "global message");
+TITANIUM_MOD_LOG(Info, "message tagged with the mod id");
 ```
 
 Levels: `Debug`, `Info`, `Warn`, `Error`. Under the hood these call the
-`prism_log` export from the proxy.
+`titanium_log` export from the proxy.
 
 ## Events
 
-[`Event.hpp`](../sdk/include/Prism/Event.hpp)) — a simple in-process pub/sub
+[`Event.hpp`](../sdk/include/Titanium/Event.hpp)) — a simple in-process pub/sub
 template:
 
 ```cpp
-prism::Event<int> onScore;
+titanium::Event<int> onScore;
 onScore.listen([](int s) { /* ... */ });
 onScore.trigger(42);
 ```
@@ -170,15 +170,15 @@ process (does not perturb GD's memory).
 
 ## Loader version
 
-[`Version.hpp`](../sdk/include/Prism/Version.hpp)) — `prism::LoaderVersion`,
-`prism::Version` with `operator>=`. Check the `loaderVersion` from `mod.json`
+[`Version.hpp`](../sdk/include/Titanium/Version.hpp)) — `titanium::LoaderVersion`,
+`titanium::Version` with `operator>=`. Check the `loaderVersion` from `mod.json`
 against the runtime version if your mod depends on specific offsets (e.g.
 `0x333a90` for `MenuLayer::init` — GD 2.206 x64).
 
 ## Conventions
 
-- Everything in `namespace prism`
+- Everything in `namespace titanium`
 - C++23, no exceptions, no RTTI
 - Windows API instead of `std::filesystem`
-- Log via `prism::log*`, not `std::cout`
+- Log via `titanium::log*`, not `std::cout`
 - Self-contained DLL (`-static`)

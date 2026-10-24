@@ -1,4 +1,4 @@
-#include <Prism/PatternScan.hpp>
+#include <Titanium/PatternScan.hpp>
 #include <Log.hpp>
 #include <cstdio>
 #include <cstring>
@@ -17,12 +17,12 @@
 #include <dlfcn.h>
 #endif
 
-namespace prism {
+namespace titanium {
 
 #ifdef _WIN32
 static FILE* logFile() {
     FILE* f = nullptr;
-    fopen_s(&f, "C:\\prismloader.log", "a");
+    fopen_s(&f, "C:\\titaniumloader.log", "a");
     return f;
 }
 #endif
@@ -41,12 +41,12 @@ bool PatternScanner::load() {
 #ifdef _WIN32
     auto log = logFile();
     if (log) {
-        fprintf(log, "[Prism] GD base: 0x%llx, code end: 0x%llx\n",
+        fprintf(log, "[Titanium] GD base: 0x%llx, code end: 0x%llx\n",
                 (unsigned long long)baseAddr, (unsigned long long)codeEnd);
         fclose(log);
     }
 #endif
-    logMsg("[Prism] GD base: 0x%llx, code end: 0x%llx",
+    logMsg("[Titanium] GD base: 0x%llx, code end: 0x%llx",
            (unsigned long long)baseAddr, (unsigned long long)codeEnd);
 
     return true;
@@ -256,4 +256,4 @@ std::optional<uintptr_t> PatternScanner::findPattern(
     return std::nullopt;
 }
 
-} // namespace prism
+} // namespace titanium

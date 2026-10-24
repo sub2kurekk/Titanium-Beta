@@ -1,6 +1,6 @@
 # Installation
 
-PrismLoader works as a **proxy DLL** — it replaces a library that Geometry Dash
+TitaniumLoader works as a **proxy DLL** — it replaces a library that Geometry Dash
 loads normally (`pthreadVCE3.dll`), forwards all of its exports to the original,
 and quietly initializes the loader on a separate thread.
 
@@ -29,7 +29,7 @@ The script, in order:
    once; subsequent runs do not overwrite the backup).
 2. **Generates the `.def`** from the original DLL's exports
    (`scripts/gendef.sh`).
-3. **Compiles** `prismproxy.dll` with MinGW (cross-compiled to Windows).
+3. **Compiles** `titaniumproxy.dll` with MinGW (cross-compiled to Windows).
 4. **Installs** — copies our proxy as `pthreadVCE3.dll` in the GD directory.
 
 After installation, launch GD normally from Steam. The loader injects itself.
@@ -53,7 +53,7 @@ Mods live in the user directory inside the Proton prefix, using a **flat**
 layout (no subdirectories):
 
 ```
-<proton-pfx>/drive_c/users/steamuser/.prismloader/mods/
+<proton-pfx>/drive_c/users/steamuser/.titaniumloader/mods/
 ├── example_mod.dll
 └── mod.json
 ```

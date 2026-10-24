@@ -1,5 +1,5 @@
 if(WIN32)
-    add_library(prismloader SHARED
+    add_library(titaniumloader SHARED
         src/dllmain.cpp
         src/hookengine.cpp
         src/patternscan.cpp
@@ -9,11 +9,11 @@ if(WIN32)
         src/ui/modmenu.cpp
         src/log.cpp
     )
-    target_link_libraries(prismloader PRIVATE psapi)
-    target_link_options(prismloader PRIVATE -static -static-libgcc -static-libstdc++)
+    target_link_libraries(titaniumloader PRIVATE psapi)
+    target_link_options(titaniumloader PRIVATE -static -static-libgcc -static-libstdc++)
 else()
     # Dummy / Linux native support if needed
-    add_library(prismloader SHARED
+    add_library(titaniumloader SHARED
         src/entry.cpp
         src/loader.cpp
         src/log.cpp
@@ -23,15 +23,15 @@ else()
         src/gdinit.cpp
         src/ui/modmenu.cpp
     )
-    target_link_libraries(prismloader PRIVATE dl)
+    target_link_libraries(titaniumloader PRIVATE dl)
 endif()
 
-target_include_directories(prismloader
+target_include_directories(titaniumloader
     PUBLIC  include
     PRIVATE src
     PRIVATE ${CMAKE_SOURCE_DIR}/sdk/include
 )
 
-target_compile_definitions(prismloader PRIVATE PRISM_BUILD_LOADER)
+target_compile_definitions(titaniumloader PRIVATE TITANIUM_BUILD_LOADER)
 
-install(TARGETS prismloader LIBRARY DESTINATION lib/prismloader)
+install(TARGETS titaniumloader LIBRARY DESTINATION lib/titaniumloader)

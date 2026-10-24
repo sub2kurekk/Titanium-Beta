@@ -29,10 +29,10 @@ x86_64-w64-mingw32-objdump -p "$DLL_PATH" | awk -v fwd="$FORWARD_NAME" '
     }
 ' >> "$OUTPUT"
 
-echo "  prism_hook" >> "$OUTPUT"
-echo "  prism_unhook" >> "$OUTPUT"
-echo "  prism_resolve_address" >> "$OUTPUT"
-echo "  prism_log" >> "$OUTPUT"
+echo "  titanium_hook" >> "$OUTPUT"
+echo "  titanium_unhook" >> "$OUTPUT"
+echo "  titanium_resolve_address" >> "$OUTPUT"
+echo "  titanium_log" >> "$OUTPUT"
 
 COUNT=$(grep -c "^  " "$OUTPUT" || true)
 echo "Generated $OUTPUT with $COUNT exports (forward to %s)"

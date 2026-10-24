@@ -1,15 +1,15 @@
 #ifdef _WIN32
 
-#include <Prism/PatternScan.hpp>
-#include <Prism/HookEngine.hpp>
-#include <Prism/Loader.hpp>
+#include <Titanium/PatternScan.hpp>
+#include <Titanium/HookEngine.hpp>
+#include <Titanium/Loader.hpp>
 #include <Log.hpp>
 #include <cstdio>
 #include <cstring>
 #include <atomic>
 #include <windows.h>
 
-namespace prism {
+namespace titanium {
 
 static std::atomic<bool> g_gdInitialized{false};
 
@@ -20,7 +20,7 @@ void onGdInit() {
     if (g_gdInitialized.exchange(true))
         return;
 
-    logMsg("[Prism] GD initialized! Loading mods...");
+    logMsg("[Titanium] GD initialized! Loading mods...");
     Loader::get().loadMods();
 }
 
@@ -63,7 +63,7 @@ bool detectGdInit() {
     }
 
     if (!gdSwapBuffersAddr && !gdApplicationRunAddr) {
-        logMsg("[Prism] Could not find GD init functions");
+        logMsg("[Titanium] Could not find GD init functions");
         onGdInit();
         return false;
     }
@@ -74,7 +74,7 @@ bool detectGdInit() {
         Hook hook;
         if (engine.installHook(gdSwapBuffersAddr, (void*)swapBuffersDetour, &hook)) {
             originalSwapBuffers = (SwapBuffersFn)hook.trampoline;
-            logMsg("[Prism] Hooked CCEGLView::swapBuffers");
+            logMsg("[Titanium] Hooked CCEGLView::swapBuffers");
         }
     }
 
@@ -82,13 +82,13 @@ bool detectGdInit() {
         Hook hook;
         if (engine.installHook(gdApplicationRunAddr, (void*)applicationRunDetour, &hook)) {
             originalApplicationRun = (ApplicationRunFn)hook.trampoline;
-            logMsg("[Prism] Hooked CCApplication::run");
+            logMsg("[Titanium] Hooked CCApplication::run");
         }
     }
 
     return true;
 }
 
-} // namespace prism
+} // namespace titanium
 
 #endif // _WIN32

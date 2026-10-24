@@ -1,6 +1,6 @@
-# PrismLoader — Documentation
+# TitaniumLoader — Documentation
 
-PrismLoader is a mod loader for **Geometry Dash** on Linux (Steam/Proton).
+TitaniumLoader is a mod loader for **Geometry Dash** on Linux (Steam/Proton).
 It injects into the game as a proxy DLL, scans memory for GD/cocos2d, hooks key
 functions, and loads mods from the user's mod directory.
 
@@ -24,12 +24,12 @@ functions, and loads mods from the user's mod directory.
 #    (the loader injects itself automatically)
 
 # 3. Watch the logs
-find ~/.steam/steam/steamapps/compatdata/322170 -name prismloader.log
+find ~/.steam/steam/steamapps/compatdata/322170 -name titaniumloader.log
 ```
 
 ## Status
 
-See the [Status section in AGENTS.md](../AGENTS.md) and [Debugging](./debugging.md).
+See [Debugging](./debugging.md) for known issues.
 The loader currently works end-to-end (proxy, pattern scan, hooks, mod loading,
 the "Mods" menu button), but a live in-game test is blocked by a Steam API crash
-that is independent of PrismLoader.
+that is independent of TitaniumLoader.

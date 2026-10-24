@@ -1,5 +1,5 @@
-#include <Prism/ModLoader.hpp>
-#include <Prism/Mod.hpp>
+#include <Titanium/ModLoader.hpp>
+#include <Titanium/Mod.hpp>
 #include <Log.hpp>
 #include <cstdio>
 #include <cstring>
@@ -16,7 +16,7 @@
 #include <sys/stat.h>
 #endif
 
-namespace prism {
+namespace titanium {
 
 static std::string getModsDirectory() {
 #ifdef _WIN32
@@ -24,11 +24,11 @@ static std::string getModsDirectory() {
     DWORD len = GetEnvironmentVariableA("USERPROFILE", path, MAX_PATH);
     if (len == 0)
         GetEnvironmentVariableA("HOME", path, MAX_PATH);
-    return std::string(path) + "\\.prismloader\\mods";
+    return std::string(path) + "\\.titaniumloader\\mods";
 #else
     const char* home = getenv("HOME");
     if (!home) home = "/tmp";
-    return std::string(home) + "/.prismloader/mods";
+    return std::string(home) + "/.titaniumloader/mods";
 #endif
 }
 
@@ -104,7 +104,7 @@ bool ModLoader::loadMod(const std::string& path) {
     if (!parseMetadata(path, id)) {
         // Fall back to filename without extension. If there's no extension, use
         // the full filename. A missing lastDot would underflow the substr length
-        // (e.g. "my.prism" -> "m"), so guard it.
+        // (e.g. "my.titanium" -> "m"), so guard it.
         auto lastSlash = path.find_last_of("\\/");
         auto lastDot   = path.find_last_of('.');
         const auto stemEnd = (lastSlash == std::string::npos) ? 0 : lastSlash + 1;
@@ -113,11 +113,11 @@ bool ModLoader::loadMod(const std::string& path) {
                                   : lastDot;
         id = path.substr(stemEnd, extStart - stemEnd);
     }
-    logMsg("[Prism] Resolved mod id='%s' for path='%s'", id.c_str(), path.c_str());
+    logMsg("[Titanium] Resolved mod id='%s' for path='%s'", id.c_str(), path.c_str());
 
     for (auto& m : mods) {
         if (m.id == id) {
-            logMsg("[Prism] Mod '%s' already loaded", id.c_str());
+            logMsg("[Titanium] Mod '%s' already loaded", id.c_str());
             return false;
         }
     }
@@ -125,27 +125,27 @@ bool ModLoader::loadMod(const std::string& path) {
 #ifdef _WIN32
     HMODULE handle = LoadLibraryA(path.c_str());
     if (!handle) {
-        logMsg("[Prism] Failed to load mod '%s': %lu", path.c_str(), GetLastError());
+        logMsg("[Titanium] Failed to load mod '%s': %lu", path.c_str(), GetLastError());
         return false;
     }
 
-    auto initFn = reinterpret_cast<Mod* (*)()>(GetProcAddress(handle, "prismModInit"));
+    auto initFn = reinterpret_cast<Mod* (*)()>(GetProcAddress(handle, "titaniumModInit"));
     if (!initFn) {
-        logMsg("[Prism] Mod '%s' has no prismModInit", path.c_str());
+        logMsg("[Titanium] Mod '%s' has no titaniumModInit", path.c_str());
         FreeLibrary(handle);
         return false;
     }
 #else
     void* handle = loadSharedLib(path);
     if (!handle) {
-        logMsg("[Prism] Failed to load mod '%s': %s", path.c_str(), dlError().c_str());
+        logMsg("[Titanium] Failed to load mod '%s': %s", path.c_str(), dlError().c_str());
         return false;
     }
 
     using InitFn = Mod* (*)();
-    auto initFn = reinterpret_cast<InitFn>(getSym(handle, "prismModInit"));
+    auto initFn = reinterpret_cast<InitFn>(getSym(handle, "titaniumModInit"));
     if (!initFn) {
-        logMsg("[Prism] Mod '%s' has no prismModInit: %s", path.c_str(), dlError().c_str());
+        logMsg("[Titanium] Mod '%s' has no titaniumModInit: %s", path.c_str(), dlError().c_str());
         unloadSharedLib(handle);
         return false;
     }
@@ -175,7 +175,7 @@ bool ModLoader::loadMod(const std::string& path) {
 
     mods.push_back(std::move(entry));
 
-    logMsg("[Prism] Loaded mod: %s (%s)", id.c_str(), path.c_str());
+    logMsg("[Titanium] Loaded mod: %s (%s)", id.c_str(), path.c_str());
 
     return true;
 }
@@ -187,17 +187,17 @@ bool ModLoader::unloadMod(const std::string& id) {
 
 #ifdef _WIN32
             auto exitFn = reinterpret_cast<void(*)(Mod*)>(GetProcAddress(
-                (HMODULE)it->handle, "prismModExit"));
+                (HMODULE)it->handle, "titaniumModExit"));
             if (exitFn) exitFn(nullptr);
             FreeLibrary((HMODULE)it->handle);
 #else
             using ExitFn = void(*)(Mod*);
-            auto exitFn = reinterpret_cast<ExitFn>(getSym(it->handle, "prismModExit"));
+            auto exitFn = reinterpret_cast<ExitFn>(getSym(it->handle, "titaniumModExit"));
             if (exitFn) exitFn(nullptr);
             unloadSharedLib(it->handle);
 #endif
 
-            logMsg("[Prism] Unloaded mod: %s", id.c_str());
+            logMsg("[Titanium] Unloaded mod: %s", id.c_str());
 
             mods.erase(it);
             return true;
@@ -211,19 +211,19 @@ std::vector<std::string> ModLoader::discoverMods(const std::string& directory) {
 
 #ifdef _WIN32
     std::string search = directory + "\\*.dll";
-    logMsg("[Prism] Scanning mods dir: %s", search.c_str());
+    logMsg("[Titanium] Scanning mods dir: %s", search.c_str());
     WIN32_FIND_DATAA findData;
     HANDLE hFind = FindFirstFileA(search.c_str(), &findData);
 
     if (hFind == INVALID_HANDLE_VALUE) {
-        logMsg("[Prism] FindFirstFileA failed (err=%lu)", GetLastError());
+        logMsg("[Titanium] FindFirstFileA failed (err=%lu)", GetLastError());
         return found;
     }
 
     do {
         if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
             std::string fullPath = directory + "\\" + findData.cFileName;
-            logMsg("[Prism] Found mod file: %s", fullPath.c_str());
+            logMsg("[Titanium] Found mod file: %s", fullPath.c_str());
             found.push_back(fullPath);
         }
     } while (FindNextFileA(hFind, &findData));
@@ -237,11 +237,11 @@ std::vector<std::string> ModLoader::discoverMods(const std::string& directory) {
     while ((ent = readdir(d)) != nullptr) {
         if (ent->d_name[0] == '.') continue;
         std::string name = ent->d_name;
-        // Accept .so and .prism files as mods on Linux.
+        // Accept .so and .titanium files as mods on Linux.
         if (name.size() < 4) continue;
         std::string ext = name.substr(name.size() - 3);
         for (auto& c : ext) c = (char)tolower((unsigned char)c);
-        if (ext != ".so" && (name.size() < 8 || name.substr(name.size() - 6) != ".prism")) {
+        if (ext != ".so" && (name.size() < 8 || name.substr(name.size() - 6) != ".titanium")) {
             continue;
         }
         found.push_back(directory + "/" + name);
@@ -271,4 +271,4 @@ void ModLoader::disableMod(const std::string& id) {
     }
 }
 
-} // namespace prism
+} // namespace titanium

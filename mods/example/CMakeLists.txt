@@ -13,6 +13,6 @@ else()
 endif()
 
 target_include_directories(example_mod PRIVATE ${CMAKE_SOURCE_DIR}/sdk/include)
-add_dependencies(example_mod prismloader)
+add_dependencies(example_mod titaniumloader)
 
-install(TARGETS example_mod LIBRARY DESTINATION share/prismloader/mods/example)
+install(TARGETS example_mod LIBRARY DESTINATION share/titaniumloader/mods/example)

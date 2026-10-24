@@ -1,6 +1,6 @@
 #pragma once
 
-namespace prism {
+namespace titanium {
 
 inline constexpr unsigned VersionMajor = 0;
 inline constexpr unsigned VersionMinor = 1;
@@ -22,4 +22,4 @@ struct Version {
 
 inline constexpr Version LoaderVersion = { VersionMajor, VersionMinor, VersionPatch };
 
-} // namespace prism
+} // namespace titanium

@@ -37,10 +37,10 @@ static std::string findGdBinary() {
 
 static std::string findLoaderLib() {
     const char* paths[] = {
-        "/usr/lib/prismloader/libprismloader.so",
-        "/usr/local/lib/prismloader/libprismloader.so",
-        "/opt/prismloader/libprismloader.so",
-        "./loader/libprismloader.so",
+        "/usr/lib/titaniumloader/libtitaniumloader.so",
+        "/usr/local/lib/titaniumloader/libtitaniumloader.so",
+        "/opt/titaniumloader/libtitaniumloader.so",
+        "./loader/libtitaniumloader.so",
         nullptr
     };
 
@@ -56,7 +56,7 @@ static void printUsage(const char* prog) {
     fprintf(stderr, "Usage: %s [options]\n", prog);
     fprintf(stderr, "Options:\n");
     fprintf(stderr, "  --gd-path <path>  Path to Geometry Dash binary\n");
-    fprintf(stderr, "  --loader <path>   Path to libprismloader.so\n");
+    fprintf(stderr, "  --loader <path>   Path to libtitaniumloader.so\n");
     fprintf(stderr, "  --help            Show this help\n");
 }
 
@@ -82,16 +82,16 @@ int main(int argc, char* argv[]) {
     }
 
     if (loaderPath.empty()) {
-        fprintf(stderr, "Error: Could not find libprismloader.so.\n");
-        fprintf(stderr, "Specify with --loader or install prismloader.\n");
+        fprintf(stderr, "Error: Could not find libtitaniumloader.so.\n");
+        fprintf(stderr, "Specify with --loader or install titaniumloader.\n");
         return 1;
     }
 
-    fprintf(stderr, "[Prism] Launching: %s\n", gdPath.c_str());
-    fprintf(stderr, "[Prism] Loader: %s\n", loaderPath.c_str());
+    fprintf(stderr, "[Titanium] Launching: %s\n", gdPath.c_str());
+    fprintf(stderr, "[Titanium] Loader: %s\n", loaderPath.c_str());
 
     setenv("LD_PRELOAD", loaderPath.c_str(), 1);
-    setenv("PRISM_LOADER", "1", 1);
+    setenv("TITANIUM_LOADER", "1", 1);
 
     execvp(gdPath.c_str(), &argv[1]);
 

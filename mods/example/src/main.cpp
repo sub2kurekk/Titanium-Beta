@@ -1,26 +1,26 @@
-#include <Prism/Mod.hpp>
-#include <Prism/Log.hpp>
+#include <Titanium/Mod.hpp>
+#include <Titanium/Log.hpp>
 #include <cstdio>
 
-class ExampleMod : public prism::Mod {
+class ExampleMod : public titanium::Mod {
 public:
-    prism::ModInfo getInfo() const override {
+    titanium::ModInfo getInfo() const override {
         return {
             .id = "example",
             .name = "Example Mod",
             .version = "1.0.0",
-            .author = "PrismLoader",
-            .description = "An example mod for PrismLoader",
+            .author = "TitaniumLoader",
+            .description = "An example mod for TitaniumLoader",
         };
     }
 
     void onLoad() override {
-        PRISM_MOD_LOG(Info, "Example mod loaded! Hello from PrismLoader!");
+        TITANIUM_MOD_LOG(Info, "Example mod loaded! Hello from TitaniumLoader!");
     }
 
     void onUnload() override {
-        PRISM_MOD_LOG(Info, "Example mod unloaded!");
+        TITANIUM_MOD_LOG(Info, "Example mod unloaded!");
     }
 };
 
-PRISM_MOD(ExampleMod)
+TITANIUM_MOD(ExampleMod)

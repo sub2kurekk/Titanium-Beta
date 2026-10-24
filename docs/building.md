@@ -1,10 +1,10 @@
 # Building
 
-PrismLoader builds in two ways:
+TitaniumLoader builds in two ways:
 
-- **Proton (Windows DLL)** — MinGW cross-compilation to `prismproxy.dll`.
+- **Proton (Windows DLL)** — MinGW cross-compilation to `titaniumproxy.dll`.
   This is the target path for GD under Proton.
-- **Linux native** — CMake builds `libprismloader.so` + the `prism` launcher
+- **Linux native** — CMake builds `libtitaniumloader.so` + the `titanium` launcher
   (optional, for development).
 
 ## Proton — proxy DLL
@@ -19,14 +19,14 @@ To rebuild only the DLL without reinstalling into the game:
 
 ```bash
 x86_64-w64-mingw32-g++ -std=c++23 -shared \
-    -o build-proton/prismproxy.dll \
+    -o build-proton/titaniumproxy.dll \
     loader/src/dllmain.cpp loader/src/hookengine.cpp \
     loader/src/patternscan.cpp loader/src/modloader.cpp \
     loader/src/gdinit.cpp loader/src/loader.cpp \
     loader/src/ui/modmenu.cpp loader/src/log.cpp \
     -Iloader/include -Isdk/include -lpsapi \
     -static-libgcc -static-libstdc++ \
-    build-proton/prismproxy.def \
+    build-proton/titaniumproxy.def \
     -Wl,--enable-stdcall-fixup
 ```
 
@@ -44,8 +44,8 @@ cmake --build build -j"$(nproc)"
 sudo cmake --install build
 ```
 
-After install: run `prism` (launches GD with the loader); logs go to
-`/tmp/prismloader.log`.
+After install: run `titanium` (launches GD with the loader); logs go to
+`/tmp/titaniumloader.log`.
 
 The MinGW toolchain for CMake lives in `cmake/mingw-w64-x86_64.cmake`.
 

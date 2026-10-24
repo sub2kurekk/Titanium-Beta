@@ -140,7 +140,7 @@ EXPORTS
   sem_trywait = pthreadVCE3_o.sem_trywait
   sem_unlink = pthreadVCE3_o.sem_unlink
   sem_wait = pthreadVCE3_o.sem_wait
-  prism_hook
-  prism_unhook
-  prism_resolve_address
-  prism_log
+  titanium_hook
+  titanium_unhook
+  titanium_resolve_address
+  titanium_log

@@ -5,7 +5,7 @@
 #include <vector>
 #include <memory>
 
-namespace prism {
+namespace titanium {
 
 struct LoadedMod {
     std::string_view id;
@@ -15,7 +15,7 @@ struct LoadedMod {
     bool enabled;
 };
 
-struct PrismApi {
+struct TitaniumApi {
     bool (*hookFn)(void* target, void* detour, void* trampoline);
     bool (*unhookFn)(void* target);
     void* (*resolveAddr)(const char* symbol);
@@ -31,7 +31,7 @@ public:
     void unloadMods();
 
     const std::vector<LoadedMod>& getMods() const { return mods; }
-    PrismApi getApi() const;
+    TitaniumApi getApi() const;
 
 private:
     Loader() = default;
@@ -41,4 +41,4 @@ private:
     std::string modsDir;
 };
 
-} // namespace prism
+} // namespace titanium

@@ -1,13 +1,13 @@
-// PrismLoader - Mod Library button + popup UI (Geode-style)
+// TitaniumLoader - Mod Library button + popup UI (Geode-style)
 //
 // Hooks MenuLayer::init and injects a "Mod Library" button at the bottom
 // of the main menu. Clicking it opens a popup listing the loaded mods.
 
 #ifdef _WIN32
 
-#include <Prism/HookEngine.hpp>
-#include <Prism/PatternScan.hpp>
-#include <Prism/ModLoader.hpp>
+#include <Titanium/HookEngine.hpp>
+#include <Titanium/PatternScan.hpp>
+#include <Titanium/ModLoader.hpp>
 #include <Log.hpp>
 #include <windows.h>
 #include <cstring>
@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 
-namespace prism {
+namespace titanium {
 
 // ─── Cocos2d forward declarations (ABI-only, not full layout) ───────────────
 
@@ -129,7 +129,7 @@ static void onCloseButtonClicked(void*, void*) {
     if (g_popupLayer && g_cocosSyms.removeFromParent) {
         g_cocosSyms.removeFromParent(g_popupLayer);
         g_popupLayer = nullptr;
-        logMsg("[PrismUI] Mod Library popup closed");
+        logMsg("[TitaniumUI] Mod Library popup closed");
     }
 }
 
@@ -140,13 +140,13 @@ static void showModLibraryPopup() {
         return;
     }
     if (!g_cocosSyms.load()) {
-        logMsg("[PrismUI] Cannot show popup: cocos2d symbols missing");
+        logMsg("[TitaniumUI] Cannot show popup: cocos2d symbols missing");
         return;
     }
 
     void* director = g_cocosSyms.sharedDirector();
     if (!director) {
-        logMsg("[PrismUI] sharedDirector() returned null");
+        logMsg("[TitaniumUI] sharedDirector() returned null");
         return;
     }
     CCSize win = g_cocosSyms.getWinSize(director);
@@ -156,14 +156,14 @@ static void showModLibraryPopup() {
     ccColor4B bg{0, 0, 0, 200};
     void* panel = g_cocosSyms.layerColorCreate(bg, win.width * w, win.height * h);
     if (!panel) {
-        logMsg("[PrismUI] layerColorCreate returned null");
+        logMsg("[TitaniumUI] layerColorCreate returned null");
         return;
     }
     g_cocosSyms.setPosition(panel, { win.width * (1.0f - w) * 0.5f,
                                       win.height * (1.0f - h) * 0.5f });
 
     // Title at top.
-    void* title = g_cocosSyms.labelCreate("PrismLoader - Mod Library", "bigFont.fnt");
+    void* title = g_cocosSyms.labelCreate("TitaniumLoader - Mod Library", "bigFont.fnt");
     if (title) {
         g_cocosSyms.setPosition(title, { win.width * 0.5f, win.height - 50.0f });
         g_cocosSyms.setScale(title, 0.6f);
@@ -231,9 +231,9 @@ static void showModLibraryPopup() {
     if (scene) {
         g_cocosSyms.addChildZ(scene, panel, 9999);
         g_popupLayer = panel;
-        logMsg("[PrismUI] Mod Library popup shown (%zu mod(s))", mods.size());
+        logMsg("[TitaniumUI] Mod Library popup shown (%zu mod(s))", mods.size());
     } else {
-        logMsg("[PrismUI] getRunningScene returned null, popup not shown");
+        logMsg("[TitaniumUI] getRunningScene returned null, popup not shown");
     }
 }
 
@@ -248,8 +248,8 @@ static constexpr uintptr_t k_MenuLayerInitOffset = 0x333a90;
 using MenuLayerInitFn = bool(__thiscall*)(void* self);
 static MenuLayerInitFn g_originalMenuLayerInit = nullptr;
 
-static void onPrismButtonClicked(void*, void*) {
-    logMsg("[PrismUI] Mod Library button clicked");
+static void onTitaniumButtonClicked(void*, void*) {
+    logMsg("[TitaniumUI] Mod Library button clicked");
     showModLibraryPopup();
 }
 
@@ -261,7 +261,7 @@ static bool __fastcall menuLayerInitDetour(void* self) {
     if (!ok) return false;
 
     if (!g_cocosSyms.load()) {
-        logMsg("[PrismUI] Missing cocos2d symbols, skipping button injection");
+        logMsg("[TitaniumUI] Missing cocos2d symbols, skipping button injection");
         return true;
     }
 
@@ -273,15 +273,15 @@ static bool __fastcall menuLayerInitDetour(void* self) {
     void* normalSprite   = g_cocosSyms.spriteCreate("GJ_button_01.png");
     void* selectedSprite = g_cocosSyms.spriteCreate("GJ_button_01.png");
     if (!normalSprite || !selectedSprite) {
-        logMsg("[PrismUI] Failed to load GJ_button_01.png sprite");
+        logMsg("[TitaniumUI] Failed to load GJ_button_01.png sprite");
         return true;
     }
     g_cocosSyms.setScale(selectedSprite, 0.9f);
 
     void* menuItem = g_cocosSyms.menuItemCreate(
-        normalSprite, selectedSprite, nullptr, onPrismButtonClicked);
+        normalSprite, selectedSprite, nullptr, onTitaniumButtonClicked);
     if (!menuItem) {
-        logMsg("[PrismUI] menuItemCreate returned null");
+        logMsg("[TitaniumUI] menuItemCreate returned null");
         return true;
     }
 
@@ -306,7 +306,7 @@ static bool __fastcall menuLayerInitDetour(void* self) {
         g_cocosSyms.addChild(menuItem, label);
     }
 
-    logMsg("[PrismUI] Mod Library button injected at (%.0f, 50)", win.width - 50.0f);
+    logMsg("[TitaniumUI] Mod Library button injected at (%.0f, 50)", win.width - 50.0f);
     return true;
 }
 
@@ -316,7 +316,7 @@ void installModMenuHook() {
     HMODULE gdExe = GetModuleHandleA(nullptr);
     if (!gdExe) gdExe = GetModuleHandleA("GeometryDash.exe");
     if (!gdExe) {
-        logMsg("[PrismUI] Could not get GeometryDash.exe handle");
+        logMsg("[TitaniumUI] Could not get GeometryDash.exe handle");
         return;
     }
 
@@ -326,13 +326,13 @@ void installModMenuHook() {
     Hook hook;
     if (!HookEngine::get().installHook(target,
             reinterpret_cast<void*>(menuLayerInitDetour), &hook)) {
-        logMsg("[PrismUI] Failed to install MenuLayer::init hook at %p", target);
+        logMsg("[TitaniumUI] Failed to install MenuLayer::init hook at %p", target);
         return;
     }
     g_originalMenuLayerInit = reinterpret_cast<MenuLayerInitFn>(hook.trampoline);
-    logMsg("[PrismUI] MenuLayer::init hook installed at %p", target);
+    logMsg("[TitaniumUI] MenuLayer::init hook installed at %p", target);
 }
 
-} // namespace prism
+} // namespace titanium
 
 #endif // _WIN32
