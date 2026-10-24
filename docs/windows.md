@@ -63,6 +63,43 @@ The script, in order:
 
 Then launch Geometry Dash from Steam as usual.
 
+## Install into a separate copy (keep Steam unmodded)
+
+If you want your Steam install to stay completely clean, let the script copy the
+game to a second folder and install Titanium only there:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1 -CopyTo "C:\GD"
+```
+
+The script:
+
+1. Finds your Steam install of Geometry Dash (or uses `-GdPath` as the source).
+2. Copies the whole game to `C:\GD` with `robocopy`. This can take a few
+   minutes. If `C:\GD` already contains `GeometryDash.exe`, the copy is skipped
+   and only Titanium is (re)installed there.
+3. Backs up, builds and installs the proxy DLL **inside `C:\GD` only**.
+4. Writes `steam_appid.txt` (containing `322170`) next to the copy's
+   `GeometryDash.exe` if it is missing, so Steam's API can recognise the game
+   when it is not run from Steam's library folder.
+
+The Steam folder is never written to. The script refuses to run if the target is
+the Steam folder itself, is inside it, or contains it, and it refuses a target
+that is non-empty but is not already a Geometry Dash copy.
+
+**To play the modded game**, keep Steam running and start
+`C:\GD\GeometryDash.exe` yourself (a desktop shortcut to it works well). Starting
+Geometry Dash from the Steam library launches the unmodded game, as before.
+
+To update the copy after rebuilding Titanium, run the same command again. To
+remove everything, delete the `C:\GD` folder. Your mods in
+`%USERPROFILE%\.titaniumloader` are shared by every install, since both use the
+same mods folder.
+
+> Note: this relies on Geometry Dash starting outside Steam's library folder
+> while Steam is running. If the game refuses to start from the copy, use the
+> normal in-place install instead.
+
 ## Uninstall
 
 ```powershell
@@ -72,6 +109,9 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\uninstall.ps1
 This moves `pthreadVCE3_o.dll` back over `pthreadVCE3.dll`. Your mods folder is
 left untouched. Verifying the game files in Steam also replaces the proxy with
 the original library.
+
+For a separate copy made with `-CopyTo`, either delete the folder, or restore it
+in place with `uninstall.ps1 -GdPath "C:\GD"`.
 
 ## Mods
 
@@ -117,6 +157,9 @@ What to look for is described in [Debugging](./debugging.md#key-lines-to-look-fo
 | `MinGW-w64 g++ not found` | Install MinGW-w64 (see above) or add its `bin` folder to `PATH`. |
 | `Geometry Dash directory not found` | Pass the folder explicitly with `-GdPath`. It must contain `GeometryDash.exe`. |
 | `could not write pthreadVCE3.dll` | Geometry Dash is still running. Close it and run the script again. |
+| `-CopyTo must be a separate folder` | The target is the Steam install, inside it, or contains it. Pick a folder elsewhere, such as `C:\GD`. |
+| `already exists, is not empty and has no GeometryDash.exe` | `-CopyTo` points at an unrelated folder. Use a new or empty folder. |
+| The copy starts but asks for or restarts through Steam | Make sure Steam is running and signed in to the account that owns the game. |
 | Game does not start after install | Run `uninstall.ps1`, then verify game files in Steam, then install again. |
 | No `titaniumloader.log` appears | Check that `pthreadVCE3_o.dll` sits next to `pthreadVCE3.dll` in the game folder. Antivirus software can also quarantine unsigned proxy DLLs, so check its history. |
 | Hook or pattern-scan errors in the log | Offsets are specific to the GD version. See [Debugging](./debugging.md#hook-does-not-work--crash-on-hook). |
