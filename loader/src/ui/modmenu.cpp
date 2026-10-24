@@ -32,7 +32,9 @@ struct CocosNode {
 };
 
 using FnCCDirectorShared      = void* (*)();
-using FnCCDirectorGetWinSize  = CCSize (*)(void*);
+// CCSize has user-declared constructors, so MSVC returns it through a hidden
+// pointer (first argument, `this` moves to the second), not in RAX.
+using FnCCDirectorGetWinSize  = CCSize* (*)(CCSize* ret, void* director);
 using FnCCSpriteCreate        = void* (*)(const char*);
 using FnCCMenuCreate          = void* (*)();
 // CCMenuItemSprite::create(normal, selected, disabled, target, selector): five
@@ -153,7 +155,8 @@ static void showModLibraryPopup() {
         logMsg("[TitaniumUI] sharedDirector() returned null");
         return;
     }
-    CCSize win = g_cocosSyms.getWinSize(director);
+    CCSize win{};
+    g_cocosSyms.getWinSize(&win, director);
 
     // Dark semi-transparent panel covering ~60% of the screen, centered.
     constexpr float w = 0.6f, h = 0.7f;
@@ -369,7 +372,9 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     logMsg("[TitaniumUI] cocos2d symbols resolved; getting director");
     void* director = g_cocosSyms.sharedDirector();
     if (!director) return true;
-    CCSize win = g_cocosSyms.getWinSize(director);
+    logMsg("[TitaniumUI] director = %p; reading window size", director);
+    CCSize win{};
+    g_cocosSyms.getWinSize(&win, director);
 
     logMsg("[TitaniumUI] window size %.0fx%.0f; creating sprites", win.width, win.height);
     // Mod Library button sprite (using standard GD button asset).
