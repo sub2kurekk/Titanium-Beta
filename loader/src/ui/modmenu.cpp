@@ -348,6 +348,13 @@ static bool __fastcall menuLayerInitDetour(void* self) {
     logMsg("[TitaniumUI] original MenuLayer::init returned %d", ok ? 1 : 0);
     if (!ok) return false;
 
+    char ptBuf[8];
+    if (GetEnvironmentVariableA("TITANIUM_MENU_PASSTHROUGH", ptBuf, sizeof(ptBuf)) > 0 && ptBuf[0] == '1') {
+        logMsg("[TitaniumUI] TITANIUM_MENU_PASSTHROUGH=1: not adding the Mods button");
+        return true;
+    }
+    logMsg("[TitaniumUI] resolving cocos2d symbols");
+
     if (!g_cocosSyms.load()) {
         logMsg("[TitaniumUI] Missing cocos2d symbols, skipping button injection");
         return true;
