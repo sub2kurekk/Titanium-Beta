@@ -13,7 +13,7 @@ launcher are not affected.
 ## Requirements
 
 - Windows 10 or 11, 64-bit
-- Geometry Dash installed through Steam (hook offsets target **GD 2.206 x64**)
+- Geometry Dash installed through Steam (**GD 2.209 x64** is supported; see [Supported versions](#supported-versions))
 - **MinGW-w64 GCC** (GCC 13 or newer, because the code is built as C++23)
 
 ### Installing MinGW-w64 with MSYS2
@@ -31,6 +31,28 @@ launcher are not affected.
 The install script looks for the compiler on `PATH` first, then in
 `C:\msys64\mingw64\bin` and `C:\msys64\ucrt64\bin`. If you installed MSYS2
 somewhere else, add its `mingw64\bin` folder to `PATH`.
+
+## Supported versions
+
+Titanium identifies the game by the timestamp in `GeometryDash.exe`'s PE header
+(Geode does the same) and looks up the `MenuLayer::init` address for that build.
+
+| Build | Timestamp | Status |
+| --- | --- | --- |
+| GD 2.209 | `0x6ACE3633` | address from Geode's data; not yet confirmed on real hardware here |
+| GD 2.2091 | `0x6AD2D987` | address from a third-party source, **unverified** |
+| anything else | - | falls back to the 2.206 address, used only if the safety checks pass |
+
+Before hooking, the loader checks that the address lies in executable code, is
+16-byte aligned, follows `0xCC` padding and references several `GJ_*` sprite
+names. If a check fails it does **not** hook (the Mods button is missing, the
+game still runs). The hook engine also decodes whole instructions and relocates
+RIP-relative operands, so it will not cut an instruction in half. Unit tests for
+this live in `tests/` (Linux/x86-64: `g++ -std=c++20 -no-pie hook_test.cpp hook_funcs.S`).
+
+If your build is not recognized, open `%TEMP%\titaniumloader.log` and send the
+`PE timestamp` and `Verify:` lines. Advanced: `TITANIUM_MENULAYER_INIT_RVA=0x...`
+overrides the address, and `TITANIUM_FORCE_HOOK=1` skips verification.
 
 ## Install
 
@@ -148,7 +170,7 @@ What to look for is described in [Debugging](./debugging.md#key-lines-to-look-fo
 | --- | --- |
 | `running scripts is disabled on this system` | Run the script through `powershell -ExecutionPolicy Bypass -File ...` as shown above. |
 | `MinGW-w64 g++ not found` | Install MinGW-w64 (see above) or add its `bin` folder to `PATH`. |
-| `is not a 64-bit (x64) DLL` | Your Geometry Dash is a 32-bit build. Titanium builds a 64-bit proxy and currently supports only 64-bit Geometry Dash (hook offsets target GD 2.206 x64). |
+| `is not a 64-bit (x64) DLL` | Your Geometry Dash is a 32-bit build. Titanium builds a 64-bit proxy and supports only 64-bit Geometry Dash. |
 | `no named exports found` | `pthreadVCE3_o.dll` is not the pthreads library the game normally ships. If you ran an earlier broken install, restore the game's original files (Steam: verify game files) and try again, or report the message together with your GD version. |
 | `compilation failed` with no compiler messages | The compiler could not start its helper programs because MinGW's DLLs were not found. The installer adds the compiler's folder to `PATH` for its own run, so this means the MinGW install itself is incomplete or damaged. In the MSYS2 MINGW64 shell run `pacman -Syu`, then `pacman -S mingw-w64-x86_64-gcc`, and try again. |
 | `compilation failed` | The compiler's messages are printed just above the error and saved to `build-windows\compile.log`. The first `error:` line is the useful one. Also check the `Compiler target` / `version` lines the script prints: it needs a 64-bit MinGW-w64 GCC (`x86_64-w64-mingw32`), ideally GCC 13 or newer. |

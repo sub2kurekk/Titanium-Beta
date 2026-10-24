@@ -241,9 +241,88 @@ static void showModLibraryPopup() {
 
 static bool __fastcall menuLayerInitDetour(void* self);
 
-// Offset of MenuLayer::init in GeometryDash.exe (GD 2.206, x64). This is the
-// same offset Geode uses for its MenuLayer hook.
-static constexpr uintptr_t k_MenuLayerInitOffset = 0x333a90;
+// Known GeometryDash.exe builds, identified by the PE header TimeDateStamp (the
+// same way Geode identifies Windows builds), with the RVA of MenuLayer::init.
+// To add a build: run the game once, read the "PE timestamp" line in the log,
+// find MenuLayer::init in that build and add a row.
+struct KnownBuild {
+    uint32_t    timestamp;
+    uintptr_t   menuLayerInitRva;
+    const char* name;
+    bool        verified;  // false = offset taken from third-party data, untested
+};
+static constexpr KnownBuild k_KnownBuilds[] = {
+    { 0x6ACE3633, 0x46eee0, "GD 2.209",  true  },
+    { 0x6AD2D987, 0x4720c0, "GD 2.2091", false },
+};
+
+static uint32_t readPeTimestamp(HMODULE mod) {
+    auto* base = reinterpret_cast<const uint8_t*>(mod);
+    auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE) return 0;
+    auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE) return 0;
+    return nt->FileHeader.TimeDateStamp;
+}
+
+static uint32_t readImageSize(HMODULE mod) {
+    auto* base = reinterpret_cast<const uint8_t*>(mod);
+    auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(base);
+    auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+    return nt->OptionalHeader.SizeOfImage;
+}
+
+// Sanity-checks a candidate function address so a wrong offset is refused
+// instead of corrupting unrelated code. Returns true if it looks like
+// MenuLayer::init. `strict` failures are logged; with TITANIUM_FORCE_HOOK=1 the
+// hook is installed anyway.
+static bool verifyMenuLayerInit(HMODULE mod, uintptr_t rva) {
+    auto* base = reinterpret_cast<const uint8_t*>(mod);
+    uint32_t imageSize = readImageSize(mod);
+    if (rva < 0x1000 || rva + 0x400 > imageSize) {
+        logMsg("[TitaniumUI] Verify: RVA 0x%zx is outside the image (size 0x%x)", (size_t)rva, imageSize);
+        return false;
+    }
+    const uint8_t* fn = base + rva;
+
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQuery(fn, &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT ||
+        !(mbi.Protect & (PAGE_EXECUTE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))) {
+        logMsg("[TitaniumUI] Verify: target is not in executable memory");
+        return false;
+    }
+    if (rva & 0xF) {
+        logMsg("[TitaniumUI] Verify: target is not 16-byte aligned");
+        return false;
+    }
+    if (fn[-1] != 0xCC) {
+        logMsg("[TitaniumUI] Verify: target is not preceded by padding (0xCC)");
+        return false;
+    }
+
+    // MenuLayer::init loads many GJ_* sprites through RIP-relative `lea`
+    // instructions. Count how many of the first 0x600 bytes' lea operands point
+    // at strings starting with "GJ_".
+    size_t scan = 0x600;
+    if (fn + scan > base + imageSize) scan = (base + imageSize) - fn;
+    int hits = 0;
+    for (size_t i = 0; i + 7 <= scan; ++i) {
+        // REX.W (48/4C) 8D /r with mod=00 rm=101 (RIP-relative)
+        if ((fn[i] == 0x48 || fn[i] == 0x4C) && fn[i + 1] == 0x8D && (fn[i + 2] & 0xC7) == 0x05) {
+            int32_t disp;
+            memcpy(&disp, fn + i + 3, 4);
+            const uint8_t* str = fn + i + 7 + disp;
+            if (str > base && str + 4 < base + imageSize && str[0] == 'G' && str[1] == 'J' && str[2] == '_')
+                ++hits;
+        }
+    }
+    logMsg("[TitaniumUI] Verify: %d references to GJ_* sprite names near the target", hits);
+    if (hits < 3) {
+        logMsg("[TitaniumUI] Verify: too few sprite references; this does not look like MenuLayer::init");
+        return false;
+    }
+    return true;
+}
 
 using MenuLayerInitFn = bool(__thiscall*)(void* self);
 static MenuLayerInitFn g_originalMenuLayerInit = nullptr;
@@ -320,8 +399,44 @@ void installModMenuHook() {
         return;
     }
 
-    auto target = reinterpret_cast<void*>(
-        reinterpret_cast<uintptr_t>(gdExe) + k_MenuLayerInitOffset);
+    uint32_t stamp = readPeTimestamp(gdExe);
+    logMsg("[TitaniumUI] GeometryDash.exe PE timestamp: 0x%08X", stamp);
+
+    uintptr_t rva = 0;
+    const KnownBuild* build = nullptr;
+    for (const auto& b : k_KnownBuilds)
+        if (b.timestamp == stamp) build = &b;
+
+    // Manual override for builds not in the table: TITANIUM_MENULAYER_INIT_RVA=0x...
+    char envBuf[32];
+    if (GetEnvironmentVariableA("TITANIUM_MENULAYER_INIT_RVA", envBuf, sizeof(envBuf)) > 0) {
+        rva = static_cast<uintptr_t>(strtoull(envBuf, nullptr, 0));
+        logMsg("[TitaniumUI] Using RVA 0x%zx from TITANIUM_MENULAYER_INIT_RVA", (size_t)rva);
+    } else if (build) {
+        rva = build->menuLayerInitRva;
+        logMsg("[TitaniumUI] Recognized %s (%s offset), MenuLayer::init RVA 0x%zx",
+               build->name, build->verified ? "verified" : "UNVERIFIED", (size_t)rva);
+    } else {
+        // Unknown build: fall back to the GD 2.206 offset, but only if the
+        // verification below confirms it really is MenuLayer::init.
+        rva = 0x333a90;
+        logMsg("[TitaniumUI] Unknown Geometry Dash build; trying the GD 2.206 offset 0x%zx "
+               "(verified before use). Send the timestamp line above to the Titanium "
+               "developer to get your version supported, or set TITANIUM_MENULAYER_INIT_RVA.",
+               (size_t)rva);
+    }
+
+    if (!verifyMenuLayerInit(gdExe, rva)) {
+        char forceBuf[8];
+        if (GetEnvironmentVariableA("TITANIUM_FORCE_HOOK", forceBuf, sizeof(forceBuf)) > 0 && forceBuf[0] == '1') {
+            logMsg("[TitaniumUI] TITANIUM_FORCE_HOOK=1 set, hooking despite failed verification");
+        } else {
+            logMsg("[TitaniumUI] Verification failed, NOT hooking MenuLayer::init (mod button disabled)");
+            return;
+        }
+    }
+
+    auto target = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(gdExe) + rva);
 
     Hook hook;
     if (!HookEngine::get().installHook(target,

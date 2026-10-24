@@ -4,6 +4,7 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include "x64len.hpp"
 #else
 #include <sys/mman.h>
 #include <unistd.h>
@@ -45,6 +46,85 @@ static void flushICache(void* addr, size_t size) {
 }
 #endif
 
+#ifdef _WIN32
+// Allocates a small executable block within +-1.5 GB of `near`, so that
+// RIP-relative operands and rel32 branches copied into it can still reach their
+// targets. Returns nullptr if no free region is found.
+static void* allocateNear(uintptr_t nearAddr, size_t size) {
+    SYSTEM_INFO si;
+    GetSystemInfo(&si);
+    const uintptr_t gran = si.dwAllocationGranularity;
+    const uintptr_t range = 0x60000000;
+    uintptr_t lo = nearAddr > range ? nearAddr - range : 0x10000;
+    uintptr_t hi = nearAddr + range;
+    if (lo < reinterpret_cast<uintptr_t>(si.lpMinimumApplicationAddress))
+        lo = reinterpret_cast<uintptr_t>(si.lpMinimumApplicationAddress);
+
+    // Walk outwards from the target: try addresses below and above alternately.
+    for (uintptr_t step = 0; step < range; step += gran * 16) {
+        for (int dir = 0; dir < 2; ++dir) {
+            uintptr_t a = dir ? nearAddr + step : (nearAddr > step ? nearAddr - step : 0);
+            if (a < lo || a > hi) continue;
+            a &= ~(gran - 1);
+            MEMORY_BASIC_INFORMATION mbi;
+            if (!VirtualQuery(reinterpret_cast<void*>(a), &mbi, sizeof(mbi))) continue;
+            if (mbi.State != MEM_FREE) continue;
+            uintptr_t base = reinterpret_cast<uintptr_t>(mbi.BaseAddress);
+            uintptr_t end = base + mbi.RegionSize;
+            uintptr_t cand = (base + gran - 1) & ~(gran - 1);
+            if (cand < lo) cand = (lo + gran - 1) & ~(gran - 1);
+            if (cand + size > end || cand + size > hi) continue;
+            void* p = VirtualAlloc(reinterpret_cast<void*>(cand), size,
+                                   MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+            if (p) return p;
+        }
+    }
+    return nullptr;
+}
+
+// Builds a trampoline that copies whole instructions from the start of `target`
+// (relocating RIP-relative operands) and jumps back. Returns nullptr and logs the
+// reason if the function cannot be hooked safely.
+static void* createSafeTrampoline(void* target) {
+    constexpr size_t kBlock = 128;
+
+    // Do not read past the end of the mapped, readable memory.
+    MEMORY_BASIC_INFORMATION mbi;
+    if (!VirtualQuery(target, &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT) {
+        logMsg("[Titanium] Hook target %p is not committed memory", target);
+        return nullptr;
+    }
+    size_t avail = (reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize) -
+                   reinterpret_cast<uintptr_t>(target);
+    if (avail > 64) avail = 64;
+
+    uintptr_t addr = reinterpret_cast<uintptr_t>(target);
+    void* block = allocateNear(addr, kBlock);
+    if (!block) {
+        logMsg("[Titanium] No executable memory available near %p for the trampoline", target);
+        return nullptr;
+    }
+
+    auto res = x64::buildTrampoline(static_cast<const uint8_t*>(target), avail, addr,
+                                    static_cast<uint8_t*>(block), kBlock,
+                                    reinterpret_cast<uintptr_t>(block));
+    if (!res.ok) {
+        logMsg("[Titanium] Refusing to hook %p: %s%s", target,
+               res.error ? res.error : "unknown error",
+               res.needsNear ? " (relocated operand out of range)" : "");
+        VirtualFree(block, 0, MEM_RELEASE);
+        return nullptr;
+    }
+
+    logMsg("[Titanium] Trampoline for %p built at %p (%zu bytes of prologue copied)",
+           target, block, res.prefixLength);
+    FlushInstructionCache(GetCurrentProcess(), block, kBlock);
+    DWORD old;
+    VirtualProtect(block, kBlock, PAGE_EXECUTE_READ, &old);
+    return block;
+}
+#endif
+
 bool HookEngine::installHook(void* target, void* detour, Hook* out) {
     std::lock_guard lock(mutex);
 
@@ -61,7 +141,11 @@ bool HookEngine::installHook(void* target, void* detour, Hook* out) {
     hook.originalBytes.resize(14);
     memcpy(hook.originalBytes.data(), target, 14);
 
+#ifdef _WIN32
+    hook.trampoline = createSafeTrampoline(target);
+#else
     hook.trampoline = createTrampoline(target, 14);
+#endif
     if (!hook.trampoline) {
         logMsg("[Titanium] Failed to create trampoline for %p", target);
         return false;
