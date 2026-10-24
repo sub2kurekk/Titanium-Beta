@@ -97,6 +97,12 @@ it cannot, pass the folder explicitly:
 powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1 -GdPath "D:\Games\Geometry Dash"
 ```
 
+**Want to keep your Steam install clean?** `-GdPath` installs into only the folder
+you give it and never copies or modifies anything else. Copy the game folder
+yourself (for example to `C:\GD`), then run the command above with
+`-GdPath "C:\GD"` and start `C:\GD\GeometryDash.exe`. Steps in
+[docs/windows.md](./docs/windows.md#install-into-a-different-folder-keep-steam-unmodded).
+
 The script does five things:
 
 1. Backs up the original `pthreadVCE3.dll` as `pthreadVCE3_o.dll` (only once).
@@ -106,20 +112,6 @@ The script does five things:
 5. Creates the mods folder `%USERPROFILE%\.titaniumloader\mods`.
 
 Then launch Geometry Dash from Steam as usual.
-
-#### Keep your Steam install unmodded
-
-To leave the Steam copy untouched and install Titanium into a second copy of the
-game instead, add `-CopyTo`:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\windows\install.ps1 -CopyTo "C:\GD"
-```
-
-The game is copied to `C:\GD` and only that copy gets Titanium. Keep Steam
-running and start `C:\GD\GeometryDash.exe` to play the modded game; launching from
-Steam still gives you the clean one. Details in
-[docs/windows.md](./docs/windows.md#install-into-a-separate-copy-keep-steam-unmodded).
 
 ### Uninstall
 
