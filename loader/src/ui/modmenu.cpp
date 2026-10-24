@@ -333,10 +333,19 @@ static void onTitaniumButtonClicked(void*, void*) {
 }
 
 static bool __fastcall menuLayerInitDetour(void* self) {
-    if (!g_originalMenuLayerInit)
-        return false;  // hook not installed correctly; bail
+    // installHook() returns the trampoline only after the detour is live, so in
+    // the tiny window between the two the pointer is still null. Wait briefly
+    // instead of failing MenuLayer::init (which would leave the game stuck).
+    for (int i = 0; i < 200 && !g_originalMenuLayerInit; ++i)
+        Sleep(1);
+    if (!g_originalMenuLayerInit) {
+        logMsg("[TitaniumUI] detour called but the original function pointer is missing");
+        return false;
+    }
 
+    logMsg("[TitaniumUI] MenuLayer::init detour entered, calling original");
     bool ok = g_originalMenuLayerInit(self);
+    logMsg("[TitaniumUI] original MenuLayer::init returned %d", ok ? 1 : 0);
     if (!ok) return false;
 
     if (!g_cocosSyms.load()) {
@@ -396,6 +405,12 @@ void installModMenuHook() {
     if (!gdExe) gdExe = GetModuleHandleA("GeometryDash.exe");
     if (!gdExe) {
         logMsg("[TitaniumUI] Could not get GeometryDash.exe handle");
+        return;
+    }
+
+    char offBuf[8];
+    if (GetEnvironmentVariableA("TITANIUM_NO_MENU_HOOK", offBuf, sizeof(offBuf)) > 0 && offBuf[0] == '1') {
+        logMsg("[TitaniumUI] TITANIUM_NO_MENU_HOOK=1 set, MenuLayer::init hook disabled");
         return;
     }
 
