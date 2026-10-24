@@ -428,9 +428,57 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     return true;
 }
 
+
+// ─── Crash diagnostics ───────────────────────────────────────────────────────
+// Logs where an access violation happened (module + offset) and the first stack
+// entries, so a crash inside the game or cocos2d can be traced from the log alone.
+static void describeAddress(char* out, size_t cap, uintptr_t addr) {
+    HMODULE mod = nullptr;
+    if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                           GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           reinterpret_cast<LPCSTR>(addr), &mod) && mod) {
+        char path[MAX_PATH] = {};
+        GetModuleFileNameA(mod, path, MAX_PATH);
+        const char* base = strrchr(path, '\\');
+        snprintf(out, cap, "%s+0x%zx", base ? base + 1 : path,
+                 (size_t)(addr - reinterpret_cast<uintptr_t>(mod)));
+    } else {
+        snprintf(out, cap, "0x%zx", (size_t)addr);
+    }
+}
+
+static LONG WINAPI titaniumCrashLogger(EXCEPTION_POINTERS* info) {
+    static bool logged = false;
+    DWORD code = info->ExceptionRecord->ExceptionCode;
+    if (logged || code != EXCEPTION_ACCESS_VIOLATION) return EXCEPTION_CONTINUE_SEARCH;
+    logged = true;
+
+    char where[300];
+    describeAddress(where, sizeof(where), info->ContextRecord->Rip);
+    logMsg("[TitaniumCrash] access violation at %s (rip=%p), accessing %p",
+           where, (void*)info->ContextRecord->Rip,
+           (void*)info->ExceptionRecord->ExceptionInformation[1]);
+
+    auto* sp = reinterpret_cast<uintptr_t*>(info->ContextRecord->Rsp);
+    for (int i = 0; i < 24; ++i) {
+        MEMORY_BASIC_INFORMATION mbi;
+        if (!VirtualQuery(&sp[i], &mbi, sizeof(mbi)) || mbi.State != MEM_COMMIT ||
+            (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)))
+            break;
+        uintptr_t v = sp[i];
+        if (VirtualQuery(reinterpret_cast<void*>(v), &mbi, sizeof(mbi)) &&
+            mbi.State == MEM_COMMIT && mbi.Type == MEM_IMAGE) {
+            describeAddress(where, sizeof(where), v);
+            logMsg("[TitaniumCrash] stack[%d] = %s", i, where);
+        }
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
 // ─── Installation ─────────────────────────────────────────────────────────
 
 void installModMenuHook() {
+    AddVectoredExceptionHandler(1, titaniumCrashLogger);
     HMODULE gdExe = GetModuleHandleA(nullptr);
     if (!gdExe) gdExe = GetModuleHandleA("GeometryDash.exe");
     if (!gdExe) {
