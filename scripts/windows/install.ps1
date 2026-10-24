@@ -31,6 +31,13 @@ if (-not $gpp) {
 }
 Write-Host "[Titanium] Compiler: $gpp"
 
+# The compiler runs helper programs (cc1plus, ld, ...) that load MinGW's DLLs
+# from the same bin folder. Windows only finds those DLLs through PATH, so make
+# sure the compiler's folder is on PATH for this script (and the compiler it
+# starts), even if the user never added it system-wide.
+$gppDir = Split-Path -Parent $gpp
+$env:PATH = "$gppDir;$env:PATH"
+
 # Check the compiler up front so a wrong one gives a clear message instead of a
 # wall of errors later.
 $gppTarget = [string](& $gpp -dumpmachine | Select-Object -First 1)
@@ -87,20 +94,28 @@ try {
         'build-windows/titaniumproxy.def',
         '-Wl,--enable-stdcall-fixup'
     )
-    # Show the compiler output and also keep it in a log file. stderr is merged
-    # into the pipeline, so error handling is relaxed for this one call.
+    # Capture the compiler output (stdout and stderr), show it, and keep it in a
+    # log file. stderr is merged into the pipeline, so error handling is relaxed
+    # for this one call.
     $logPath = Join-Path $buildDir 'compile.log'
     $savedPreference = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $gpp @compileArgs 2>&1 | ForEach-Object { "$_" } | Tee-Object -FilePath $logPath | Write-Host
+        $compileOutput = @(& $gpp @compileArgs 2>&1 | ForEach-Object { "$_" })
         $compileExit = $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $savedPreference
     }
+    $compileOutput | Out-File -FilePath $logPath -Encoding ascii
+    foreach ($outLine in $compileOutput) { Write-Host $outLine }
+
     if ($compileExit -ne 0) {
-        throw "Error: compilation failed (exit code $compileExit). The compiler messages are shown above and saved in:`n  $logPath"
+        $hint = ''
+        if ($compileOutput.Count -eq 0) {
+            $hint = "`nThe compiler printed nothing before failing. That usually means one of its helper programs could not start because MinGW's DLLs were not found. Make sure $gppDir exists and is complete (MSYS2: pacman -Syu), then open a new terminal and try again."
+        }
+        throw "Error: compilation failed (exit code $compileExit). The compiler output is saved in:`n  $logPath$hint"
     }
 }
 finally {
