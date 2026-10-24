@@ -38,6 +38,8 @@ using FnCCDirectorShared      = void* (*)();
 using FnCCDirectorGetWinSize  = CCSize* (*)(void* director, CCSize* ret);
 using FnCCSpriteCreate        = void* (*)(const char*);
 using FnCCMenuCreate          = void* (*)();
+// NOTE: CCMenuItem::activate does nothing when `target` is null (verified in
+// libcocos2d.dll), so callers must pass a real CCObject as target.
 // CCMenuItemSprite::create(normal, selected, disabled, target, selector): five
 // parameters (see the mangled name below). The selector is a member-function
 // pointer, which on x64 is a plain code pointer called as selector(target, sender).
@@ -220,7 +222,7 @@ static void showModLibraryPopup() {
     if (closeSpriteN && closeSpriteS && g_cocosSyms.setScale) {
         g_cocosSyms.setScale(closeSpriteS, 0.9f);
         closeMenuItem = g_cocosSyms.menuItemCreate(
-            closeSpriteN, closeSpriteS, nullptr, nullptr, onCloseButtonClicked);
+            closeSpriteN, closeSpriteS, nullptr, panel, onCloseButtonClicked);
     }
     void* closeMenu = g_cocosSyms.menuCreate();
     if (closeMenu && closeMenuItem) {
@@ -413,7 +415,7 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
 
     logMsg("[TitaniumUI] creating menu item");
     void* menuItem = g_cocosSyms.menuItemCreate(
-        normalSprite, selectedSprite, nullptr, nullptr, onTitaniumButtonClicked);
+        normalSprite, selectedSprite, nullptr, self, onTitaniumButtonClicked);
     if (!menuItem) {
         logMsg("[TitaniumUI] menuItemCreate returned null");
         return true;
