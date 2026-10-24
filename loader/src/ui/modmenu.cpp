@@ -385,10 +385,27 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     }
     logMsg("[TitaniumUI] window size %.0fx%.0f; creating sprites (frames)", win.width, win.height);
     // Mod Library button sprite (using standard GD button asset).
-    void* normalSprite   = g_cocosSyms.spriteCreate("GJ_button_01.png");
-    void* selectedSprite = g_cocosSyms.spriteCreate("GJ_button_01.png");
+    // Which sprite frames exist depends on which sprite sheets the game has loaded
+    // at this point, so try several well-known frames and use the first one found.
+    static const char* const kFrames[] = {
+        "GJ_button_01.png", "GJ_button_02.png", "GJ_button_04.png",
+        "GJ_moreBtn_001.png", "GJ_optionsBtn_001.png", "GJ_statsBtn_001.png",
+        "GJ_garageBtn_001.png", "GJ_achBtn_001.png", "GJ_creatorBtn_001.png",
+        "GJ_playBtn_001.png", "GJ_infoBtn_001.png", "GJ_closeBtn_001.png",
+    };
+    void* normalSprite = nullptr;
+    void* selectedSprite = nullptr;
+    for (const char* frame : kFrames) {
+        normalSprite = g_cocosSyms.spriteCreate(frame);
+        if (normalSprite) {
+            selectedSprite = g_cocosSyms.spriteCreate(frame);
+            logMsg("[TitaniumUI] using sprite frame %s", frame);
+            break;
+        }
+        logMsg("[TitaniumUI] sprite frame %s not found", frame);
+    }
     if (!normalSprite || !selectedSprite) {
-        logMsg("[TitaniumUI] Failed to load GJ_button_01.png sprite");
+        logMsg("[TitaniumUI] None of the candidate sprite frames could be created");
         return true;
     }
     logMsg("[TitaniumUI] sprites created: %p %p", normalSprite, selectedSprite);
