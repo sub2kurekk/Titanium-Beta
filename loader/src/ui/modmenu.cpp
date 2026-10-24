@@ -33,8 +33,9 @@ struct CocosNode {
 
 using FnCCDirectorShared      = void* (*)();
 // CCSize has user-declared constructors, so MSVC returns it through a hidden
-// pointer (first argument, `this` moves to the second), not in RAX.
-using FnCCDirectorGetWinSize  = CCSize* (*)(CCSize* ret, void* director);
+// pointer. For a member function `this` stays first (RCX) and the hidden return
+// pointer is second (RDX); confirmed by disassembling libcocos2d.dll.
+using FnCCDirectorGetWinSize  = CCSize* (*)(void* director, CCSize* ret);
 using FnCCSpriteCreate        = void* (*)(const char*);
 using FnCCMenuCreate          = void* (*)();
 // CCMenuItemSprite::create(normal, selected, disabled, target, selector): five
@@ -156,7 +157,7 @@ static void showModLibraryPopup() {
         return;
     }
     CCSize win{};
-    g_cocosSyms.getWinSize(&win, director);
+    g_cocosSyms.getWinSize(director, &win);
 
     // Dark semi-transparent panel covering ~60% of the screen, centered.
     constexpr float w = 0.6f, h = 0.7f;
@@ -374,7 +375,7 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     if (!director) return true;
     logMsg("[TitaniumUI] director = %p; reading window size", director);
     CCSize win{};
-    g_cocosSyms.getWinSize(&win, director);
+    g_cocosSyms.getWinSize(director, &win);
 
     if (win.width < 1.0f || win.height < 1.0f) {
         // GD's design resolution is about 569x320 points.
