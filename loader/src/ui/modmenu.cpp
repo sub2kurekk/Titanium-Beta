@@ -94,7 +94,7 @@ struct CocosSymbols {
         getWinSize         = sym<FnCCDirectorGetWinSize>(
             "?getWinSize@CCDirector@cocos2d@@QEAA?AVCCSize@2@XZ");
         spriteCreate       = sym<FnCCSpriteCreate>(
-            "?create@CCSprite@cocos2d@@SAPEAV12@PEBD@Z");
+            "?createWithSpriteFrameName@CCSprite@cocos2d@@SAPEAV12@PEBD@Z");
         menuCreate         = sym<FnCCMenuCreate>(
             "?create@CCMenu@cocos2d@@SAPEAV12@XZ");
         menuItemCreate     = sym<FnCCMenuItemSpriteCreate>(
@@ -376,7 +376,13 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     CCSize win{};
     g_cocosSyms.getWinSize(&win, director);
 
-    logMsg("[TitaniumUI] window size %.0fx%.0f; creating sprites", win.width, win.height);
+    if (win.width < 1.0f || win.height < 1.0f) {
+        // GD's design resolution is about 569x320 points.
+        logMsg("[TitaniumUI] window size read as %.0fx%.0f; using 569x320", win.width, win.height);
+        win.width = 569.0f;
+        win.height = 320.0f;
+    }
+    logMsg("[TitaniumUI] window size %.0fx%.0f; creating sprites (frames)", win.width, win.height);
     // Mod Library button sprite (using standard GD button asset).
     void* normalSprite   = g_cocosSyms.spriteCreate("GJ_button_01.png");
     void* selectedSprite = g_cocosSyms.spriteCreate("GJ_button_01.png");
@@ -384,6 +390,7 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
         logMsg("[TitaniumUI] Failed to load GJ_button_01.png sprite");
         return true;
     }
+    logMsg("[TitaniumUI] sprites created: %p %p", normalSprite, selectedSprite);
     g_cocosSyms.setScale(selectedSprite, 0.9f);
 
     logMsg("[TitaniumUI] creating menu item");
