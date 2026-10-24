@@ -83,3 +83,97 @@ function Find-GeometryDash {
 
     return $null
 }
+
+# Reads the export table of a PE file (.dll) directly, with no external tools.
+# Returns an object with:
+#   Machine        PE machine type (0x8664 = x64, 0x14C = x86)
+#   HasExportTable $true if the DLL has an export directory at all
+#   FunctionCount  number of exported functions (named or by ordinal)
+#   Names          the exported names, in the order stored in the file
+function Get-PeExports {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 64 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw "$Path is not a Windows executable or DLL (no MZ header)."
+    }
+
+    $peOffset = [int64][BitConverter]::ToUInt32($bytes, 0x3C)
+    if (($peOffset + 24) -gt $bytes.Length -or
+        $bytes[$peOffset] -ne 0x50 -or $bytes[$peOffset + 1] -ne 0x45 -or
+        $bytes[$peOffset + 2] -ne 0 -or $bytes[$peOffset + 3] -ne 0) {
+        throw "$Path is not a valid PE file (no PE signature)."
+    }
+
+    $coff = $peOffset + 4
+    $machine = [int][BitConverter]::ToUInt16($bytes, $coff)
+    $sectionCount = [int][BitConverter]::ToUInt16($bytes, $coff + 2)
+    $optionalSize = [int][BitConverter]::ToUInt16($bytes, $coff + 16)
+    $optional = $coff + 20
+    $magic = [int][BitConverter]::ToUInt16($bytes, $optional)
+
+    # The export directory is the first entry of the optional header's data
+    # directory, which starts at a different offset for PE32 and PE32+.
+    if ($magic -eq 0x20B) { $dirOffset = $optional + 112 }
+    elseif ($magic -eq 0x10B) { $dirOffset = $optional + 96 }
+    else { throw ("{0} has an unknown optional header type (0x{1:X})." -f $Path, $magic) }
+
+    $result = [pscustomobject]@{
+        Machine        = $machine
+        HasExportTable = $false
+        FunctionCount  = 0
+        Names          = @()
+    }
+
+    $exportRva = [int64][BitConverter]::ToUInt32($bytes, $dirOffset)
+    if ($exportRva -eq 0) { return $result }
+
+    # Section table, used to turn RVAs into file offsets.
+    $sectionTable = $optional + $optionalSize
+    $sections = @()
+    for ($i = 0; $i -lt $sectionCount; $i++) {
+        $s = $sectionTable + 40 * $i
+        $virtualSize = [int64][BitConverter]::ToUInt32($bytes, $s + 8)
+        $rawSize = [int64][BitConverter]::ToUInt32($bytes, $s + 16)
+        $sections += [pscustomobject]@{
+            Va   = [int64][BitConverter]::ToUInt32($bytes, $s + 12)
+            Span = [Math]::Max($virtualSize, $rawSize)
+            Raw  = [int64][BitConverter]::ToUInt32($bytes, $s + 20)
+        }
+    }
+
+    $toOffset = {
+        param([int64]$rva)
+        foreach ($sec in $sections) {
+            if ($rva -ge $sec.Va -and $rva -lt ($sec.Va + $sec.Span)) {
+                return [int]($rva - $sec.Va + $sec.Raw)
+            }
+        }
+        return -1
+    }
+
+    $exportOffset = & $toOffset $exportRva
+    if ($exportOffset -lt 0 -or ($exportOffset + 40) -gt $bytes.Length) {
+        throw "$Path has a damaged export table."
+    }
+
+    $result.HasExportTable = $true
+    $result.FunctionCount = [int][BitConverter]::ToUInt32($bytes, $exportOffset + 20)
+    $nameCount = [int][BitConverter]::ToUInt32($bytes, $exportOffset + 24)
+    $namesOffset = & $toOffset ([int64][BitConverter]::ToUInt32($bytes, $exportOffset + 32))
+
+    $names = New-Object System.Collections.Generic.List[string]
+    if ($nameCount -gt 0 -and $namesOffset -ge 0) {
+        for ($i = 0; $i -lt $nameCount; $i++) {
+            $nameRva = [int64][BitConverter]::ToUInt32($bytes, $namesOffset + 4 * $i)
+            $start = & $toOffset $nameRva
+            if ($start -lt 0) { continue }
+            $end = $start
+            while ($end -lt $bytes.Length -and $bytes[$end] -ne 0) { $end++ }
+            $names.Add([System.Text.Encoding]::ASCII.GetString($bytes, $start, $end - $start))
+        }
+    }
+
+    $result.Names = $names.ToArray()
+    return $result
+}

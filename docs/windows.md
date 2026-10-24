@@ -25,8 +25,8 @@ launcher are not affected.
    pacman -S mingw-w64-x86_64-gcc
    ```
 
-   This also installs `objdump`, which the installer uses to read the original
-   DLL's exports.
+   Only the compiler is needed. The installer reads the original DLL's exports
+   itself, so no other tools are required.
 
 The install script looks for the compiler on `PATH` first, then in
 `C:\msys64\mingw64\bin` and `C:\msys64\ucrt64\bin`. If you installed MSYS2
@@ -148,6 +148,8 @@ What to look for is described in [Debugging](./debugging.md#key-lines-to-look-fo
 | --- | --- |
 | `running scripts is disabled on this system` | Run the script through `powershell -ExecutionPolicy Bypass -File ...` as shown above. |
 | `MinGW-w64 g++ not found` | Install MinGW-w64 (see above) or add its `bin` folder to `PATH`. |
+| `is not a 64-bit (x64) DLL` | Your Geometry Dash is a 32-bit build. Titanium builds a 64-bit proxy and currently supports only 64-bit Geometry Dash (hook offsets target GD 2.206 x64). |
+| `no named exports found` | `pthreadVCE3_o.dll` is not the pthreads library the game normally ships. If you ran an earlier broken install, restore the game's original files (Steam: verify game files) and try again, or report the message together with your GD version. |
 | `Geometry Dash directory not found` | Pass the folder explicitly with `-GdPath`. It must contain `GeometryDash.exe`. |
 | `could not write pthreadVCE3.dll` | Geometry Dash is still running. Close it and run the script again. |
 | Game does not start after install | Run `uninstall.ps1`, then verify game files in Steam, then install again. |
