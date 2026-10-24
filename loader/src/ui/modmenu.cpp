@@ -35,19 +35,23 @@ using FnCCDirectorShared      = void* (*)();
 using FnCCDirectorGetWinSize  = CCSize (*)(void*);
 using FnCCSpriteCreate        = void* (*)(const char*);
 using FnCCMenuCreate          = void* (*)();
+// CCMenuItemSprite::create(normal, selected, disabled, target, selector): five
+// parameters (see the mangled name below). The selector is a member-function
+// pointer, which on x64 is a plain code pointer called as selector(target, sender).
 using FnCCMenuItemSpriteCreate = void* (*)(
-    void* normalSprite, void* selectedSprite, void* target,
-    void(*selector)(void*, void*));
+    void* normalSprite, void* selectedSprite, void* disabledSprite,
+    void* target, void(*selector)(void*, void*));
 using FnCCLabelBMFontCreate   = void* (*)(const char* str, const char* fntFile);
 using FnCCLayerColorCreate    = void* (*)(const ccColor4B& color, float w, float h);
 using FnCCNodeAddChild        = void (*)(void* node, void* child);
 using FnCCNodeAddChildZ       = void (*)(void* node, void* child, int z);
-using FnCCNodeSetPosition     = void (*)(void* node, CCPoint pos);
+// The real parameter is `const CCPoint&`, i.e. a pointer, not the struct by value.
+using FnCCNodeSetPosition     = void (*)(void* node, const CCPoint& pos);
 using FnCCNodeSetScale        = void (*)(void* node, float scale);
 using FnCCNodeSetZOrder       = void (*)(void* node, int z);
 using FnCCNodeSetVisible      = void (*)(void* node, bool visible);
 using FnCCNodeRemoveFromParent = void (*)(void* node);
-using FnCCMenuSetPosition     = void (*)(void* menu, CCPoint pos);
+using FnCCMenuSetPosition     = void (*)(void* menu, const CCPoint& pos);
 
 // ─── Resolver helpers ────────────────────────────────────────────────────────
 
@@ -212,7 +216,7 @@ static void showModLibraryPopup() {
     if (closeSpriteN && closeSpriteS && g_cocosSyms.setScale) {
         g_cocosSyms.setScale(closeSpriteS, 0.9f);
         closeMenuItem = g_cocosSyms.menuItemCreate(
-            closeSpriteN, closeSpriteS, nullptr, onCloseButtonClicked);
+            closeSpriteN, closeSpriteS, nullptr, nullptr, onCloseButtonClicked);
     }
     void* closeMenu = g_cocosSyms.menuCreate();
     if (closeMenu && closeMenuItem) {
@@ -362,10 +366,12 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
         return true;
     }
 
+    logMsg("[TitaniumUI] cocos2d symbols resolved; getting director");
     void* director = g_cocosSyms.sharedDirector();
     if (!director) return true;
     CCSize win = g_cocosSyms.getWinSize(director);
 
+    logMsg("[TitaniumUI] window size %.0fx%.0f; creating sprites", win.width, win.height);
     // Mod Library button sprite (using standard GD button asset).
     void* normalSprite   = g_cocosSyms.spriteCreate("GJ_button_01.png");
     void* selectedSprite = g_cocosSyms.spriteCreate("GJ_button_01.png");
@@ -375,8 +381,9 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     }
     g_cocosSyms.setScale(selectedSprite, 0.9f);
 
+    logMsg("[TitaniumUI] creating menu item");
     void* menuItem = g_cocosSyms.menuItemCreate(
-        normalSprite, selectedSprite, nullptr, onTitaniumButtonClicked);
+        normalSprite, selectedSprite, nullptr, nullptr, onTitaniumButtonClicked);
     if (!menuItem) {
         logMsg("[TitaniumUI] menuItemCreate returned null");
         return true;
@@ -387,12 +394,14 @@ static bool __fastcall menuLayerInitDetour(void* self, void* a2, void* a3, void*
     g_cocosSyms.addChild(menu, menuItem);
 
     // Bottom-right of the screen, similar to where Geode places its button.
+    logMsg("[TitaniumUI] positioning menu");
     g_cocosSyms.setPosition(menu, { win.width - 50.0f, 50.0f });
     g_cocosSyms.setPosition(menuItem, { 0.0f, 0.0f });
     g_cocosSyms.setScale(menu, 0.7f);
     g_cocosSyms.setZOrder(menu, 100);
 
     // MenuLayer is a CCNode, so we can addChild directly to self.
+    logMsg("[TitaniumUI] adding menu to MenuLayer");
     g_cocosSyms.addChild(self, menu);
 
     // Label inside the button: "Mods".
